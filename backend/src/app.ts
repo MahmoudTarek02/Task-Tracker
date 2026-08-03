@@ -1,11 +1,12 @@
 import express from "express";
+import authRoutes from "./modules/auth/auth.routes";
 
 const app = express();
 
-// Middleware
 app.use(express.json());
 
-// Temporary test route
+app.use("/auth", authRoutes);
+
 app.get("/", (_req, res) => {
   res.send("TaskTrack API is running!");
 });
