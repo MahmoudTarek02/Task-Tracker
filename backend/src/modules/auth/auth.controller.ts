@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import authService from "./auth.service";
-import { registerSchema } from "./auth.validation";
+import { registerSchema, loginSchema } from "./auth.validation";
 
 class AuthController {
   async register(req: Request, res: Response) {
@@ -51,6 +51,35 @@ class AuthController {
     } catch (error: any) {
       return res.status(400).json({
         message: error.message || "Email verification failed",
+      });
+    }
+  }
+
+  async login(req: Request, res: Response) {
+    const result = loginSchema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: result.error.issues.map((err) => ({
+          field: err.path.join("."),
+          message: err.message,
+        })),
+      });
+    }
+
+    const { email, password } = result.data;
+
+    try {
+      const data = await authService.login(email, password);
+
+      return res.status(200).json({
+        message: "Login successful",
+        ...data,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        message: error.message || "Login failed",
       });
     }
   }
