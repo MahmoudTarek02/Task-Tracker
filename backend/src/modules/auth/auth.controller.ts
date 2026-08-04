@@ -1,16 +1,58 @@
 import { Request, Response } from "express";
 import authService from "./auth.service";
+import { registerSchema } from "./auth.validation";
 
 class AuthController {
   async register(req: Request, res: Response) {
-    const { name, email, password } = req.body;
+    const result = registerSchema.safeParse(req.body);
 
-    const user = await authService.register(name, email, password);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: result.error.issues.map((err) => ({
+          field: err.path.join("."),
+          message: err.message,
+        })),
+      });
+    }
 
-    return res.status(201).json({
-      message: "User registered successfully",
-      user,
-    });
+    const { name, email, password } = result.data;
+
+    try {
+      const user = await authService.register(name, email, password);
+
+      return res.status(201).json({
+        message: "User registered successfully",
+        user,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        message: error.message || "Registration failed",
+      });
+    }
+  }
+
+  async verifyEmail(req: Request, res: Response) {
+    const { token } = req.query;
+
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({
+        message: "Verification token is required",
+      });
+    }
+
+    try {
+      const user = await authService.verifyEmail(token);
+
+      return res.status(200).json({
+        message: "Email verified successfully",
+        user,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        message: error.message || "Email verification failed",
+      });
+    }
   }
 }
 
