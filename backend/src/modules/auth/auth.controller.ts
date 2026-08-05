@@ -71,11 +71,18 @@ class AuthController {
     const { email, password } = result.data;
 
     try {
-      const data = await authService.login(email, password);
+      const { user, token } = await authService.login(email, password);
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      });
 
       return res.status(200).json({
         message: "Login successful",
-        ...data,
+        user,
       });
     } catch (error: any) {
       return res.status(400).json({
@@ -85,8 +92,28 @@ class AuthController {
   }
 
   async logout(req: Request, res: Response) {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
     return res.status(200).json({
       message: "Sign out successful",
+    });
+  }
+
+  async me(req: Request, res: Response) {
+    // so typescript doesn't show error if user is not in req
+    const authReq = req as any;
+    if (!authReq.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    return res.status(200).json({
+      user: {
+        id: authReq.user.id,
+        name: authReq.user.name,
+        email: authReq.user.email,
+      },
     });
   }
 }
