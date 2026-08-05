@@ -26,10 +26,6 @@ export default function Dashboard() {
       const response = await api.get("/projects");
       const fetchedProjects = response.data.projects || [];
       setProjects(fetchedProjects);
-      // Auto-select the first project if nothing is selected yet
-      if (fetchedProjects.length > 0 && !selectedProjectId) {
-        setSelectedProjectId(fetchedProjects[0].id);
-      }
     } catch (err: any) {
       console.error("Failed to load projects:", err);
     } finally {
