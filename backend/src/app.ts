@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes";
+import projectRoutes from "./modules/project/project.routes";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 app.use(express.json());
 
 app.use("/auth", authRoutes);
+app.use("/projects", projectRoutes);
 
 app.get("/", (_req, res) => {
   res.send("TaskTrack API is running!");

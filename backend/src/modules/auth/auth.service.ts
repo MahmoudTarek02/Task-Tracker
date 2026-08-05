@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import User from "../../database/models/user.model";
+import { User } from "../../database/models";
 import { sendVerificationEmail } from "../../config/email";
 
 class AuthService {
