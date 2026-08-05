@@ -1,0 +1,8 @@
+progress.md
+
+# Backend
+backend/.env
+backend/node_modules/
+backend/dist/
+
+README.md
