@@ -53,6 +53,11 @@ input {
   color: inherit;
 }
 
+input[type="date"] {
+  color-scheme: light;
+  color: #333;
+}
+
 input:focus {
   outline: none;
   border-color: #007bff;

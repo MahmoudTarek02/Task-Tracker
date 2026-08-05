@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
+import TaskBoard from "../components/TaskBoard";
 import api from "../services/api";
 
 interface Project {
@@ -153,10 +154,8 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
-              <div>
-                <p style={{ fontSize: "1.1rem", color: "#555" }}>
-                  Task board workspace placeholder for <strong>{activeProject.name}</strong>. (Tasks list coming next!)
-                </p>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <TaskBoard projectId={activeProject.id} />
               </div>
             </div>
           ) : (
