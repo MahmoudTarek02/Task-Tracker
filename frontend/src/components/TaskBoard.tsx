@@ -244,7 +244,6 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         await api.post("/tasks", payload);
         setShowModal(false);
       }
-      fetchTasks();
       onTasksChange();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to save task.");
@@ -253,8 +252,10 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
   const handleQuickStatusChange = async (task: Task, newStatus: "To Do" | "In Progress" | "Done") => {
     try {
-      await api.put(`/tasks/${task.id}`, { status: newStatus });
-      fetchTasks();
+      const response = await api.put(`/tasks/${task.id}`, { status: newStatus });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? response.data.task : t))
+      );
       onTasksChange();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to update task status.");
@@ -268,8 +269,8 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
     try {
       await api.delete(`/tasks/${activeTask.id}`);
-      navigate(`/home/projects/${projectId}`);
-      fetchTasks();
+      setTasks((prev) => prev.filter((t) => t.id !== activeTask.id));
+      navigate(`/dashboard/projects/${projectId}`);
       onTasksChange();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete task.");
