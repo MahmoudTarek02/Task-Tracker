@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router";
 import api from "../services/api";
 
 interface Task {
@@ -19,6 +20,8 @@ interface TaskBoardProps {
 }
 
 export default function TaskBoard({ projectId }: TaskBoardProps) {
+  const { taskId } = useParams();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +54,31 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
     fetchTasks();
   }, [projectId]);
 
+  useEffect(() => {
+    if (taskId && tasks.length > 0) {
+      const task = tasks.find((t) => t.id === taskId);
+      if (task) {
+        setActiveTask(task);
+        setTitle(task.title);
+        setDescription(task.description || "");
+        setStatus(task.status);
+        setPriority(task.priority);
+        setEstimatedTime(task.estimatedTime !== undefined && task.estimatedTime !== null ? task.estimatedTime : "");
+        setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
+        setError(null);
+        setShowModal(true);
+      } else {
+        setShowModal(false);
+        setActiveTask(null);
+      }
+    } else if (!taskId) {
+      if (activeTask) {
+        setShowModal(false);
+        setActiveTask(null);
+      }
+    }
+  }, [taskId, tasks]);
+
   const handleOpenCreateModal = (colStatus: "To Do" | "In Progress" | "Done") => {
     setActiveTask(null);
     setTitle("");
@@ -64,15 +92,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
   };
 
   const handleOpenEditModal = (task: Task) => {
-    setActiveTask(task);
-    setTitle(task.title);
-    setDescription(task.description || "");
-    setStatus(task.status);
-    setPriority(task.priority);
-    setEstimatedTime(task.estimatedTime !== undefined && task.estimatedTime !== null ? task.estimatedTime : "");
-    setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
-    setError(null);
-    setShowModal(true);
+    navigate(`/dashboard/projects/${projectId}/tasks/${task.id}`);
   };
 
   const handleTaskSubmit = async (e: React.FormEvent) => {
@@ -96,12 +116,13 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
         setTasks((prev) =>
           prev.map((t) => (t.id === activeTask.id ? response.data.task : t))
         );
+        navigate(`/dashboard/projects/${projectId}`);
       } else {
         // Create mode
         const response = await api.post("/tasks", payload);
         setTasks((prev) => [...prev, response.data.task]);
+        setShowModal(false);
       }
-      setShowModal(false);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to save task.");
     }
@@ -126,7 +147,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
     try {
       await api.delete(`/tasks/${activeTask.id}`);
       setTasks((prev) => prev.filter((t) => t.id !== activeTask.id));
-      setShowModal(false);
+      navigate(`/dashboard/projects/${projectId}`);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete task.");
     }
@@ -467,7 +488,13 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button 
                     type="button" 
-                    onClick={() => { setShowModal(false); setError(null); }}
+                    onClick={() => {
+                      setShowModal(false);
+                      setError(null);
+                      if (activeTask) {
+                        navigate(`/dashboard/projects/${projectId}`);
+                      }
+                    }}
                     style={{
                       padding: "8px 16px",
                       backgroundColor: "#fff",
