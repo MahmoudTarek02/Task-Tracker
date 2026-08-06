@@ -1,5 +1,5 @@
 import { Task, Project } from "../../database/models";
-import { UniqueConstraintError } from "sequelize";
+import { UniqueConstraintError, Op } from "sequelize";
 
 class TaskService {
   async createTask(userId: string, taskData: any) {
@@ -41,7 +41,7 @@ class TaskService {
     }
   }
 
-  async getTasksByProject(userId: string, projectId: string) {
+  async getTasksByProject(userId: string, projectId: string, overdueOnly = false) {
     const project = await Project.findOne({
       where: { id: projectId, userId },
     });
@@ -50,8 +50,18 @@ class TaskService {
       throw new Error("Project not found or access denied.");
     }
 
+    const whereClause: any = { projectId };
+    if (overdueOnly) {
+      whereClause.dueDate = {
+        [Op.lt]: new Date(),
+      };
+      whereClause.status = {
+        [Op.ne]: "Done",
+      };
+    }
+
     const tasks = await Task.findAll({
-      where: { projectId },
+      where: whereClause,
       order: [["createdAt", "ASC"]],
     });
 
