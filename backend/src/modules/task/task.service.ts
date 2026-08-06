@@ -85,6 +85,16 @@ class TaskService {
       };
     }
 
+    const whereClause: any = { projectId };
+    if (overdueOnly) {
+      whereClause.dueDate = {
+        [Op.lt]: new Date(),
+      };
+      whereClause.status = {
+        [Op.ne]: "Done",
+      };
+    }
+
     const tasks = await Task.findAll({
       where: whereClause,
       attributes: {
