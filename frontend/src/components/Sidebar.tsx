@@ -5,6 +5,7 @@ interface Project {
   id: string;
   name: string;
   description?: string;
+  hasOverdueTasks?: boolean;
 }
 
 interface SidebarProps {
@@ -107,15 +108,31 @@ export default function Sidebar({
                       style={{
                         padding: "10px 12px",
                         borderRadius: "4px",
+                        borderLeft: proj.hasOverdueTasks ? "4px solid #dc3545" : "none",
                         cursor: "pointer",
                         backgroundColor: isSelected ? "#deebff" : "transparent",
                         color: isSelected ? "#0747a6" : "#333",
                         fontWeight: isSelected ? "bold" : "normal",
                         fontSize: "0.95rem",
-                        transition: "background 0.2s"
+                        transition: "background 0.2s",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center"
                       }}
                     >
-                      {proj.name}
+                      <span>{proj.name}</span>
+                      {proj.hasOverdueTasks && (
+                        <span 
+                          title="This project has overdue tasks" 
+                          style={{ 
+                            color: "#dc3545", 
+                            fontWeight: "bold",
+                            fontSize: "1rem" 
+                          }}
+                        >
+                          ⚠️
+                        </span>
+                      )}
                     </li>
                   );
                 })

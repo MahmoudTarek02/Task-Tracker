@@ -170,7 +170,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div style={{ flex: 1, minHeight: 0 }}>
-                <TaskBoard projectId={activeProject.id} />
+                <TaskBoard projectId={activeProject.id} onTasksChange={fetchProjects} />
               </div>
             </div>
           ) : (
