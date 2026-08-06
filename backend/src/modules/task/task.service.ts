@@ -1,7 +1,8 @@
 import { Task, Project, TaskAuditLog, User } from "../../database/models";
-import { UniqueConstraintError, Op } from "sequelize";
+import { Op } from "sequelize";
 import { sequelize } from "../../config/database";
 import { NotFoundError, ConflictError } from "../../utils/errors";
+import { UniqueConstraintError } from "sequelize";
 
 class TaskService {
   async createTask(userId: string, taskData: any) {
@@ -37,7 +38,7 @@ class TaskService {
     } catch (error) {
       // Handle a duplicate detected by the database-level unique constraint.
       if (error instanceof UniqueConstraintError) {
-        throw new Error(
+        throw new ConflictError(
           "A task with this title already exists in this project."
         );
       }
@@ -62,7 +63,6 @@ class TaskService {
 
     if (!project) {
       throw new NotFoundError("Project not found or access denied.");
-<<<<<<< HEAD
     }
 
     const whereClause: any = { projectId };
@@ -87,34 +87,8 @@ class TaskService {
         [Op.lt]: new Date(),
       };
       whereClause.status = {
-        [Op.ne]: "Done",
-      };
-=======
->>>>>>> 660de06 (refactor: add centralized error handling and route-level validation middleware)
-    }
-
-    const whereClause: any = { projectId };
-
-    if (filters.search) {
-      whereClause[Op.or] = [
-        { title: { [Op.iLike]: `%${filters.search}%` } },
-        { description: { [Op.iLike]: `%${filters.search}%` } },
-      ];
-    }
-
-    if (filters.status) {
-      whereClause.status = filters.status;
-    }
-
-    if (filters.priority) {
-      whereClause.priority = filters.priority;
-    }
-
-    if (filters.overdue) {
-      whereClause.dueDate = {
-        [Op.lt]: new Date(),
-      };
-      whereClause.status = {
+        // if overdone is true in filters, the status filter will become [Op.ne]: "Done", 
+        // meaning the tasks that are not done will be returned, regardless of the status filter is in the search query
         [Op.ne]: "Done",
       };
     }
@@ -145,7 +119,7 @@ class TaskService {
     if (!task) {
       return null;
     }
-
+    // search for project with same id and project owner id is the current user id
     const project = await Project.findOne({
       where: { id: task.getDataValue("projectId"), userId },
     });
@@ -164,6 +138,9 @@ class TaskService {
       throw new NotFoundError("Task not found or access denied.");
     }
 
+    // check if new title is different from old title
+    // if so, check if a task with the new title already exists in the project
+    // if so, throw conflict error
     if (
       updateData.title &&
       updateData.title !== task.getDataValue("title")
@@ -222,7 +199,7 @@ class TaskService {
       // Convert the database unique constraint violation into
       // the same application-level duplicate-title error.
       if (error instanceof UniqueConstraintError) {
-        throw new Error(
+        throw new ConflictError(
           "A task with this title already exists in this project."
         );
       }

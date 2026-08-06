@@ -387,6 +387,20 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
     return ` (Overdue by ${diffDays} day${diffDays > 1 ? "s" : ""})`;
   };
 
+
+  };
+
+  const getOverdueDaysText = (dueDateStr: string) => {
+    const dueDate = new Date(dueDateStr);
+    const today = new Date();
+    dueDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const diffTime = today.getTime() - dueDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return "";
+    return ` (Overdue by ${diffDays} day${diffDays > 1 ? "s" : ""})`;
+  };
+
   return (
     <div className="task-board">
       <div className="task-board__toolbar">
