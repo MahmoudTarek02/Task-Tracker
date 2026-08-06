@@ -94,7 +94,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   };
 
   const handleOpenEditModal = (task: Task) => {
-    navigate(`/dashboard/projects/${projectId}/tasks/${task.id}`);
+    navigate(`/home/projects/${projectId}/tasks/${task.id}`);
   };
 
   const handleTaskSubmit = async (e: React.FormEvent) => {
@@ -118,7 +118,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         setTasks((prev) =>
           prev.map((t) => (t.id === activeTask.id ? response.data.task : t))
         );
-        navigate(`/dashboard/projects/${projectId}`);
+        navigate(`/home/projects/${projectId}`);
       } else {
         // Create mode
         const response = await api.post("/tasks", payload);
@@ -151,7 +151,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
     try {
       await api.delete(`/tasks/${activeTask.id}`);
       setTasks((prev) => prev.filter((t) => t.id !== activeTask.id));
-      navigate(`/dashboard/projects/${projectId}`);
+      navigate(`/home/projects/${projectId}`);
       onTasksChange();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete task.");
@@ -537,7 +537,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
                       setShowModal(false);
                       setError(null);
                       if (activeTask) {
-                        navigate(`/dashboard/projects/${projectId}`);
+                        navigate(`/home/projects/${projectId}`);
                       }
                     }}
                     style={{

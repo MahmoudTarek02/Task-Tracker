@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   const handleProjectCreated = (newProj: Project) => {
     setProjects((prev) => [newProj, ...prev]);
-    navigate(`/dashboard/projects/${newProj.id}`);
+    navigate(`/home/projects/${newProj.id}`);
   };
 
   const selectedProjectId = projectId || null;
@@ -60,9 +60,9 @@ export default function Dashboard() {
       setProjects(updated);
       // Select another project if available, otherwise select null
       if (updated.length > 0) {
-        navigate(`/dashboard/projects/${updated[0].id}`);
+        navigate(`/home/projects/${updated[0].id}`);
       } else {
-        navigate("/dashboard");
+        navigate("/home");
       }
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to delete project.");
@@ -105,7 +105,7 @@ export default function Dashboard() {
           projects={projects}
           loading={loading}
           selectedProjectId={selectedProjectId}
-          onSelectProject={(id) => navigate(`/dashboard/projects/${id}`)}
+          onSelectProject={(id) => navigate(`/home/projects/${id}`)}
           onProjectCreated={handleProjectCreated}
         />
         <main style={{ flex: 1, padding: "24px", overflowY: "auto", backgroundColor: "#fff" }}>
@@ -120,7 +120,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => navigate("/home")}
                     style={{
                       padding: "8px 14px",
                       backgroundColor: "#fff",
