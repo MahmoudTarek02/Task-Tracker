@@ -39,7 +39,7 @@ class TaskController {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    const { projectId } = req.query;
+    const { projectId, overdue } = req.query;
     if (!projectId || typeof projectId !== "string") {
       return res.status(400).json({
         message: "projectId query parameter is required and must be a string",
@@ -47,7 +47,8 @@ class TaskController {
     }
 
     try {
-      const tasks = await taskService.getTasksByProject(authReq.user.id, projectId);
+      const overdueOnly = overdue === "true";
+      const tasks = await taskService.getTasksByProject(authReq.user.id, projectId, overdueOnly);
       return res.status(200).json({
         tasks,
       });

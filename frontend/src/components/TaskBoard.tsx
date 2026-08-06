@@ -24,6 +24,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -41,7 +42,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/tasks?projectId=${projectId}`);
+      const response = await api.get(`/tasks?projectId=${projectId}${overdueOnly ? "&overdue=true" : ""}`);
       setTasks(response.data.tasks || []);
     } catch (err: any) {
       console.error("Failed to load tasks:", err);
@@ -52,7 +53,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
 
   useEffect(() => {
     fetchTasks();
-  }, [projectId]);
+  }, [projectId, overdueOnly]);
 
   useEffect(() => {
     if (taskId && tasks.length > 0) {
@@ -171,8 +172,31 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
     }
   };
 
+  const getOverdueDaysText = (dueDateStr: string) => {
+    const dueDate = new Date(dueDateStr);
+    const today = new Date();
+    dueDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const diffTime = today.getTime() - dueDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return "";
+    return ` (Overdue by ${diffDays} day${diffDays > 1 ? "s" : ""})`;
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", height: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", paddingBottom: "10px", borderBottom: "1px solid #f0f0f0" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.95rem", color: "#333", userSelect: "none" }}>
+          <input
+            type="checkbox"
+            checked={overdueOnly}
+            onChange={(e) => setOverdueOnly(e.target.checked)}
+            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+          />
+          Show Overdue Only
+        </label>
+      </div>
+
       {loading ? (
         <div style={{ fontSize: "1.1rem", color: "#666" }}>Loading tasks...</div>
       ) : (
@@ -222,12 +246,14 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
                   ) : (
                     colTasks.map((task) => {
                       const badge = getPriorityBadgeStyles(task.priority);
+                      const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Done";
                       return (
                         <div
                           key={task.id}
                           style={{
                             backgroundColor: "#fff",
                             border: "1px solid #ddd",
+                            borderLeft: isOverdue ? "4px solid #dc3545" : "1px solid #ddd",
                             borderRadius: "4px",
                             padding: "12px",
                             boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
@@ -245,16 +271,30 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
                             <span style={{ fontWeight: "bold", fontSize: "0.95rem", color: "#333", wordBreak: "break-word" }}>
                               {task.title}
                             </span>
-                            <span style={{
-                              padding: "2px 6px",
-                              borderRadius: "3px",
-                              fontSize: "0.75rem",
-                              fontWeight: "bold",
-                              backgroundColor: badge.backgroundColor,
-                              color: badge.color
-                            }}>
-                              {task.priority}
-                            </span>
+                            <div style={{ display: "flex", gap: "5px", alignItems: "center", flexShrink: 0 }}>
+                              {isOverdue && (
+                                <span style={{
+                                  padding: "2px 6px",
+                                  borderRadius: "3px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "bold",
+                                  backgroundColor: "#ffebe6",
+                                  color: "#bf2600"
+                                }}>
+                                  ⚠️ Overdue
+                                </span>
+                              )}
+                              <span style={{
+                                padding: "2px 6px",
+                                borderRadius: "3px",
+                                fontSize: "0.75rem",
+                                fontWeight: "bold",
+                                backgroundColor: badge.backgroundColor,
+                                color: badge.color
+                              }}>
+                                {task.priority}
+                              </span>
+                            </div>
                           </div>
 
                           {task.description && (
@@ -278,8 +318,9 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
                                 <span>Est: {task.estimatedTime}m</span>
                               )}
                               {task.dueDate && (
-                                <span style={{ color: new Date(task.dueDate) < new Date() && task.status !== "Done" ? "#dc3545" : "#777" }}>
+                                <span style={{ color: isOverdue ? "#dc3545" : "#777" }}>
                                   Due: {new Date(task.dueDate).toLocaleDateString()}
+                                  {isOverdue && getOverdueDaysText(task.dueDate)}
                                 </span>
                               )}
                             </div>
