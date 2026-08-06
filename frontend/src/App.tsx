@@ -63,6 +63,8 @@ function App() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/projects/:projectId" element={<Dashboard />} />
+            <Route path="/dashboard/projects/:projectId/tasks/:taskId" element={<Dashboard />} />
           </Route>
 
           {/* Fallback redirect */}
