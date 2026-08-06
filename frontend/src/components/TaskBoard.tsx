@@ -17,9 +17,10 @@ interface Task {
 
 interface TaskBoardProps {
   projectId: string;
+  onTasksChange: () => void;
 }
 
-export default function TaskBoard({ projectId }: TaskBoardProps) {
+export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) {
   const { taskId } = useParams();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -124,6 +125,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
         setTasks((prev) => [...prev, response.data.task]);
         setShowModal(false);
       }
+      onTasksChange();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to save task.");
     }
@@ -135,6 +137,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
       setTasks((prev) =>
         prev.map((t) => (t.id === task.id ? response.data.task : t))
       );
+      onTasksChange();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to update task status.");
     }
@@ -149,6 +152,7 @@ export default function TaskBoard({ projectId }: TaskBoardProps) {
       await api.delete(`/tasks/${activeTask.id}`);
       setTasks((prev) => prev.filter((t) => t.id !== activeTask.id));
       navigate(`/dashboard/projects/${projectId}`);
+      onTasksChange();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete task.");
     }
