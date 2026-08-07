@@ -247,8 +247,8 @@ export default function Dashboard() {
               </div>
               {editError && <span style={{ color: "#dc3545", fontSize: "0.85rem" }}>{editError}</span>}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => { setShowEditModal(false); setEditError(null); }}
                   style={{
                     padding: "8px 16px",
@@ -262,8 +262,8 @@ export default function Dashboard() {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   style={{
                     padding: "8px 16px",
                     backgroundColor: "#0052cc",
