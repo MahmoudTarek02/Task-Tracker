@@ -531,8 +531,8 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
                   )}
                 </div>
                 <div style={{ display: "flex", gap: "10px" }}>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => {
                       setShowModal(false);
                       setError(null);
@@ -552,8 +552,8 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     style={{
                       padding: "8px 16px",
                       backgroundColor: "#0052cc",

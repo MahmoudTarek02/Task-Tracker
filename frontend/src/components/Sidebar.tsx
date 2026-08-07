@@ -62,8 +62,8 @@ export default function Sidebar({
       height: "calc(100vh - 60px)",
       overflowY: "auto"
     }}>
-      <div 
-        style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", userSelect: "none" }} 
+      <div
+        style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", userSelect: "none" }}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
         <span style={{ fontSize: "0.8rem", color: "#666", display: "inline-block", width: "12px" }}>
@@ -102,7 +102,7 @@ export default function Sidebar({
                 projects.map((proj) => {
                   const isSelected = proj.id === selectedProjectId;
                   return (
-                    <li 
+                    <li
                       key={proj.id}
                       onClick={() => onSelectProject(proj.id)}
                       style={{
@@ -122,12 +122,12 @@ export default function Sidebar({
                     >
                       <span>{proj.name}</span>
                       {proj.hasOverdueTasks && (
-                        <span 
-                          title="This project has overdue tasks" 
-                          style={{ 
-                            color: "#dc3545", 
+                        <span
+                          title="This project has overdue tasks"
+                          style={{
+                            color: "#dc3545",
                             fontWeight: "bold",
-                            fontSize: "1rem" 
+                            fontSize: "1rem"
                           }}
                         >
                           ⚠️
@@ -208,8 +208,8 @@ export default function Sidebar({
               </div>
               {error && <span style={{ color: "#dc3545", fontSize: "0.85rem" }}>{error}</span>}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => { setShowModal(false); setError(null); }}
                   style={{
                     padding: "8px 16px",
@@ -223,8 +223,8 @@ export default function Sidebar({
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   style={{
                     padding: "8px 16px",
                     backgroundColor: "#0052cc",

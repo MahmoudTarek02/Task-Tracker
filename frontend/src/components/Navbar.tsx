@@ -37,8 +37,8 @@ export default function Navbar() {
             Logged in as: <strong>{user.name}</strong>
           </span>
         )}
-        <button 
-          onClick={handleLogout} 
+        <button
+          onClick={handleLogout}
           style={{
             padding: "6px 12px",
             backgroundColor: "#dc3545",
