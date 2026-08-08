@@ -73,9 +73,11 @@ class AuthService {
       throw new Error("Invalid email or password");
     }
 
-    if (!user.getDataValue("isEmailVerified")) {
-      throw new Error("Please verify your email address before logging in");
-    }
+    // removed email verification requirement before login
+    
+    // if (!user.getDataValue("isEmailVerified")) {
+    //   throw new Error("Please verify your email address before logging in");
+    // }
 
     const secret = process.env.JWT_SECRET || "fallback_secret";
     const token = jwt.sign(
