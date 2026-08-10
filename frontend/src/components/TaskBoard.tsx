@@ -336,7 +336,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
     try {
       const response = await api.put(`/tasks/${task.id}`, { status: newStatus });
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? response.data.task : t))
+        prev.map((t) => (t.id === task.id ? { ...response.data.task, totalLoggedTime: t.totalLoggedTime } : t))
       );
       onTasksChange();
     } catch (err: any) {

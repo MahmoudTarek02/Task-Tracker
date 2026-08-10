@@ -19,4 +19,10 @@ router.get("/:id/history", taskController.history);
 router.post("/:taskId/time-entries", validate(createTimeEntrySchema), timeEntryController.create);
 router.get("/:taskId/time-entries", timeEntryController.list);
 
+// adds a new log to a task
+router.post("/:taskId/time-entries", timeEntryController.create);
+// gets all time entries for a task
+router.get("/:taskId/time-entries", timeEntryController.list);
+
+
 export default router;
