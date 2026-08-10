@@ -15,7 +15,10 @@ router.get("/", validate(getTasksQuerySchema, "query"), taskController.list);
 router.put("/:id", validate(updateTaskSchema), taskController.update);
 router.delete("/:id", taskController.delete);
 
-router.post("/:taskId/time-entries", validate(createTimeEntrySchema), timeEntryController.create);
+// adds a new log to a task
+router.post("/:taskId/time-entries", timeEntryController.create);
+// gets all time entries for a task
 router.get("/:taskId/time-entries", timeEntryController.list);
+
 
 export default router;
