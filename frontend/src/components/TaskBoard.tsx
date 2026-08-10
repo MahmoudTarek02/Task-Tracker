@@ -13,6 +13,7 @@ interface Task {
   projectId: string;
   createdAt: string;
   updatedAt: string;
+  totalLoggedTime?: number;
 }
 
 interface TaskBoardProps {
@@ -39,6 +40,94 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   const [estimatedTime, setEstimatedTime] = useState<number | "">("");
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Time logging states
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [totalLoggedTime, setTotalLoggedTime] = useState<number>(0);
+  const [remainingTime, setRemainingTime] = useState<number | null>(null);
+  const [overrunTime, setOverrunTime] = useState<number | null>(null);
+
+  // Time logging form states
+  const [logDuration, setLogDuration] = useState<number | "">("");
+  const [logDate, setLogDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [logNote, setLogNote] = useState<string>("");
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [timeError, setTimeError] = useState<string | null>(null);
+
+  const fetchTimeEntries = async (taskId: string) => {
+    try {
+      const response = await api.get(`/tasks/${taskId}/time-entries`);
+      setTimeEntries(response.data.timeEntries || []);
+      setTotalLoggedTime(response.data.totalLoggedTime || 0);
+      setRemainingTime(response.data.remainingTime);
+      setOverrunTime(response.data.overrunTime);
+    } catch (err: any) {
+      console.error("Failed to fetch time entries:", err);
+    }
+  };
+
+  const handleTimeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTask) return;
+    setTimeError(null);
+
+    if (logDuration === "" || Number(logDuration) <= 0) {
+      setTimeError("Duration must be a positive number of minutes");
+      return;
+    }
+
+    const payload = {
+      duration: Number(logDuration),
+      date: logDate,
+      note: logNote.trim() || null,
+    };
+
+    try {
+      if (editingEntryId) {
+        await api.put(`/time-entries/${editingEntryId}`, payload);
+      } else {
+        await api.post(`/tasks/${activeTask.id}/time-entries`, payload);
+      }
+      await fetchTimeEntries(activeTask.id);
+      setLogDuration("");
+      setLogDate(new Date().toISOString().split("T")[0]);
+      setLogNote("");
+      setEditingEntryId(null);
+      // to update the task card in the main kanban board
+      fetchTasks();
+    } catch (err: any) {
+      setTimeError(err.response?.data?.message || "Failed to save time entry.");
+    }
+  };
+
+  const handleEditEntry = (entry: any) => {
+    setEditingEntryId(entry.id);
+    setLogDuration(entry.duration);
+    setLogDate(entry.date);
+    setLogNote(entry.note || "");
+  };
+
+  const handleCancelEditEntry = () => {
+    setEditingEntryId(null);
+    setLogDuration("");
+    setLogDate(new Date().toISOString().split("T")[0]);
+    setLogNote("");
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this time entry?");
+    if (!confirmDelete) return;
+
+    try {
+      await api.delete(`/time-entries/${entryId}`);
+      if (activeTask) {
+        await fetchTimeEntries(activeTask.id);
+        fetchTasks();
+      }
+    } catch (err: any) {
+      setTimeError(err.response?.data?.message || "Failed to delete time entry.");
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -69,6 +158,12 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
         setError(null);
         setShowModal(true);
+        fetchTimeEntries(task.id);
+        setLogDuration("");
+        setLogDate(new Date().toISOString().split("T")[0]);
+        setLogNote("");
+        setEditingEntryId(null);
+        setTimeError(null);
       } else {
         setShowModal(false);
         setActiveTask(null);
@@ -116,7 +211,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         // Edit mode
         const response = await api.put(`/tasks/${activeTask.id}`, payload);
         setTasks((prev) =>
-          prev.map((t) => (t.id === activeTask.id ? response.data.task : t))
+          prev.map((t) => (t.id === activeTask.id ? { ...response.data.task, totalLoggedTime: t.totalLoggedTime } : t))
         );
         navigate(`/home/projects/${projectId}`);
       } else {
@@ -135,7 +230,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
     try {
       const response = await api.put(`/tasks/${task.id}`, { status: newStatus });
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? response.data.task : t))
+        prev.map((t) => (t.id === task.id ? { ...response.data.task, totalLoggedTime: t.totalLoggedTime } : t))
       );
       onTasksChange();
     } catch (err: any) {
@@ -321,6 +416,9 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
                               {task.estimatedTime !== undefined && task.estimatedTime !== null && (
                                 <span>Est: {task.estimatedTime}m</span>
                               )}
+                              {task.totalLoggedTime !== undefined && Number(task.totalLoggedTime) > 0 && (
+                                <span style={{ color: "#006644", fontWeight: "500" }}>Logged: {task.totalLoggedTime}m</span>
+                              )}
                               {task.dueDate && (
                                 <span style={{ color: isOverdue ? "#dc3545" : "#777" }}>
                                   Due: {new Date(task.dueDate).toLocaleDateString()}
@@ -375,7 +473,9 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
             backgroundColor: "#fff",
             padding: "24px",
             borderRadius: "8px",
-            width: "450px",
+            width: activeTask ? "850px" : "450px",
+            maxHeight: "90vh",
+            overflowY: "auto",
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             display: "flex",
             flexDirection: "column",
@@ -385,7 +485,15 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
             <h3 style={{ margin: 0, fontSize: "1.2rem", color: "#333" }}>
               {activeTask ? "Edit Task" : "Create New Task"}
             </h3>
-            <form onSubmit={handleTaskSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            
+            <div style={{
+              display: "flex",
+              flexDirection: activeTask ? "row" : "column",
+              gap: "24px",
+              alignItems: "stretch"
+            }}>
+              {/* Left Column: Task details Form */}
+              <form onSubmit={handleTaskSubmit} style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
                 <label style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#666" }}>Task Title *</label>
                 <input
@@ -569,6 +677,147 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
                 </div>
               </div>
             </form>
+
+            {/* Right Column: Time Tracking Log */}
+            {activeTask && (
+              <div style={{
+                flex: 1,
+                borderLeft: "1px solid #eee",
+                paddingLeft: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px"
+              }}>
+                <h4 style={{ margin: 0, fontSize: "1rem", color: "#333" }}>Time Tracking</h4>
+                
+                {/* Stats */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", backgroundColor: "#f8f9fa", padding: "12px", borderRadius: "6px" }}>
+                  <div style={{ flex: 1, minWidth: "80px" }}>
+                    <div style={{ fontSize: "0.8rem", color: "#666" }}>Logged Time</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#333" }}>{totalLoggedTime}m</div>
+                  </div>
+                  {remainingTime !== null && (
+                    <div style={{ flex: 1, minWidth: "80px" }}>
+                      <div style={{ fontSize: "0.8rem", color: "#666" }}>Remaining</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: remainingTime > 0 ? "#28a745" : "#333" }}>
+                        {remainingTime}m
+                      </div>
+                    </div>
+                  )}
+                  {overrunTime !== null && overrunTime > 0 && (
+                    <div style={{ flex: 1, minWidth: "80px" }}>
+                      <div style={{ fontSize: "0.8rem", color: "#dc3545" }}>Overrun ⚠️</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#dc3545" }}>
+                        {overrunTime}m
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Log Entry Form */}
+                <form onSubmit={handleTimeSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "12px", border: "1px solid #e9e9e9", borderRadius: "6px", backgroundColor: "#fafafa" }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#555" }}>
+                    {editingEntryId ? "Edit Time Entry" : "Log Work"}
+                  </div>
+                  
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <label style={{ fontSize: "0.75rem", color: "#666" }}>Duration (m)*</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={logDuration}
+                        onChange={(e) => setLogDuration(e.target.value === "" ? "" : Number(e.target.value))}
+                        style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <label style={{ fontSize: "0.75rem", color: "#666" }}>Date*</label>
+                      <input
+                        type="date"
+                        required
+                        value={logDate}
+                        onChange={(e) => setLogDate(e.target.value)}
+                        style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333", colorScheme: "light" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.75rem", color: "#666" }}>Note (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="What did you work on?"
+                      value={logNote}
+                      onChange={(e) => setLogNote(e.target.value)}
+                      style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333" }}
+                    />
+                  </div>
+
+                  {timeError && <span style={{ color: "#dc3545", fontSize: "0.75rem" }}>{timeError}</span>}
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                    <button
+                      type="submit"
+                      style={{ flex: 1, padding: "6px 12px", backgroundColor: "#0052cc", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" }}
+                    >
+                      {editingEntryId ? "Save Log" : "Log Work"}
+                    </button>
+                    {editingEntryId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditEntry}
+                        style={{ padding: "6px 12px", backgroundColor: "#fff", color: "#333", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+
+                {/* Entry Log List */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, overflowY: "auto", maxHeight: "200px", border: "1px solid #eee", padding: "8px", borderRadius: "6px" }}>
+                  <div style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#666" }}>Logged Sessions</div>
+                  {timeEntries.length === 0 ? (
+                    <div style={{ fontSize: "0.8rem", color: "#999", fontStyle: "italic", textAlign: "center", padding: "16px 0" }}>
+                      No work logged yet.
+                    </div>
+                  ) : (
+                    timeEntries.map((entry) => (
+                      <div key={entry.id} style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px", border: "1px solid #f0f0f0", borderRadius: "4px", backgroundColor: "#fafafa" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#333" }}>{entry.duration}m</span>
+                          <span style={{ fontSize: "0.75rem", color: "#777" }}>{entry.date}</span>
+                        </div>
+                        {entry.note && (
+                          <div style={{ fontSize: "0.75rem", color: "#555", wordBreak: "break-word" }}>
+                            {entry.note}
+                          </div>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "2px" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleEditEntry(entry)}
+                            style={{ border: "none", backgroundColor: "transparent", color: "#0052cc", cursor: "pointer", fontSize: "0.7rem", padding: "2px 0" }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            style={{ border: "none", backgroundColor: "transparent", color: "#dc3545", cursor: "pointer", fontSize: "0.7rem", padding: "2px 0" }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { Task, Project } from "../../database/models";
 import { UniqueConstraintError, Op } from "sequelize";
+import { sequelize } from "../../config/database";
 
 class TaskService {
   async createTask(userId: string, taskData: any) {
@@ -62,6 +63,18 @@ class TaskService {
 
     const tasks = await Task.findAll({
       where: whereClause,
+      attributes: {
+        include: [
+          [
+            sequelize.literal(`(
+              SELECT COALESCE(SUM(duration), 0)
+              FROM time_entries AS te
+              WHERE te."taskId" = "Task".id
+            )`),
+            "totalLoggedTime"
+          ]
+        ]
+      },
       order: [["createdAt", "ASC"]],
     });
 
