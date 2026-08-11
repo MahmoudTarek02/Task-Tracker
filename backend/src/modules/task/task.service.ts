@@ -1,11 +1,14 @@
 import { Task, Project } from "../../database/models";
+import { UniqueConstraintError } from "sequelize";
 
 class TaskService {
   async createTask(userId: string, taskData: any) {
     const { projectId, title } = taskData;
+
     const project = await Project.findOne({
       where: { id: projectId, userId },
     });
+
     if (!project) {
       throw new Error("Project not found or access denied.");
     }
@@ -13,18 +16,36 @@ class TaskService {
     const existing = await Task.findOne({
       where: { projectId, title },
     });
+
     if (existing) {
-      throw new Error("A task with this title already exists in this project.");
+      throw new Error(
+        "A task with this title already exists in this project."
+      );
     }
 
-    const task = await Task.create(taskData);
-    return task;
+    // The database now enforces UNIQUE(projectId, title).
+    // The try/catch handles violations caused by concurrent requests
+    // that could both pass the findOne() check.
+    try {
+      const task = await Task.create(taskData);
+      return task;
+    } catch (error) {
+      // Handle a duplicate detected by the database-level unique constraint.
+      if (error instanceof UniqueConstraintError) {
+        throw new Error(
+          "A task with this title already exists in this project."
+        );
+      }
+
+      throw error;
+    }
   }
 
   async getTasksByProject(userId: string, projectId: string) {
     const project = await Project.findOne({
       where: { id: projectId, userId },
     });
+
     if (!project) {
       throw new Error("Project not found or access denied.");
     }
@@ -33,11 +54,13 @@ class TaskService {
       where: { projectId },
       order: [["createdAt", "ASC"]],
     });
+
     return tasks;
   }
 
   async getTaskByIdAndUser(taskId: string, userId: string) {
     const task = await Task.findByPk(taskId);
+
     if (!task) {
       return null;
     }
@@ -45,6 +68,7 @@ class TaskService {
     const project = await Project.findOne({
       where: { id: task.getDataValue("projectId"), userId },
     });
+
     if (!project) {
       return null;
     }
@@ -54,31 +78,59 @@ class TaskService {
 
   async updateTask(userId: string, taskId: string, updateData: any) {
     const task = await this.getTaskByIdAndUser(taskId, userId);
+
     if (!task) {
       throw new Error("Task not found or access denied.");
     }
 
-    if (updateData.title && updateData.title !== task.getDataValue("title")) {
+    if (
+      updateData.title &&
+      updateData.title !== task.getDataValue("title")
+    ) {
       const existing = await Task.findOne({
-        where: { projectId: task.getDataValue("projectId"), title: updateData.title },
+        where: {
+          projectId: task.getDataValue("projectId"),
+          title: updateData.title,
+        },
       });
+
       if (existing) {
-        throw new Error("A task with this title already exists in this project.");
+        throw new Error(
+          "A task with this title already exists in this project."
+        );
       }
     }
 
-    await task.update(updateData);
-    return task;
+    // The database-level unique constraint also applies to updates.
+    // Catch violations caused by concurrent requests changing task titles.
+    try {
+      await task.update(updateData);
+      return task;
+    } catch (error) {
+      // Convert the database unique constraint violation into
+      // the same application-level duplicate-title error.
+      if (error instanceof UniqueConstraintError) {
+        throw new Error(
+          "A task with this title already exists in this project."
+        );
+      }
+
+      throw error;
+    }
   }
 
   async deleteTask(userId: string, taskId: string) {
     const task = await this.getTaskByIdAndUser(taskId, userId);
+
     if (!task) {
       throw new Error("Task not found or access denied.");
     }
 
     await task.destroy();
-    return { message: "Task deleted successfully" };
+
+    return {
+      message: "Task deleted successfully",
+    };
   }
 }
 
