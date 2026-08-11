@@ -86,7 +86,23 @@ class TaskService {
     }
 
     const whereClause: any = { projectId };
-    if (overdueOnly) {
+
+    if (filters.search) {
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${filters.search}%` } },
+        { description: { [Op.iLike]: `%${filters.search}%` } },
+      ];
+    }
+
+    if (filters.status) {
+      whereClause.status = filters.status;
+    }
+
+    if (filters.priority) {
+      whereClause.priority = filters.priority;
+    }
+
+    if (filters.overdue) {
       whereClause.dueDate = {
         [Op.lt]: new Date(),
       };
