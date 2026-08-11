@@ -27,6 +27,10 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -132,7 +136,23 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/tasks?projectId=${projectId}${overdueOnly ? "&overdue=true" : ""}`);
+      const queryParams = new URLSearchParams();
+      queryParams.append("projectId", projectId);
+
+      if (debouncedSearch.trim()) {
+        queryParams.append("search", debouncedSearch.trim());
+      }
+      if (statusFilter) {
+        queryParams.append("status", statusFilter);
+      }
+      if (priorityFilter) {
+        queryParams.append("priority", priorityFilter);
+      }
+      if (overdueOnly) {
+        queryParams.append("overdue", "true");
+      }
+
+      const response = await api.get(`/tasks?${queryParams.toString()}`);
       setTasks(response.data.tasks || []);
     } catch (err: any) {
       console.error("Failed to load tasks:", err);
@@ -142,8 +162,16 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   };
 
   useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  useEffect(() => {
     fetchTasks();
-  }, [projectId, overdueOnly]);
+  }, [projectId, debouncedSearch, statusFilter, priorityFilter, overdueOnly]);
 
   useEffect(() => {
     if (taskId && tasks.length > 0) {
@@ -209,17 +237,14 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
     try {
       if (activeTask) {
         // Edit mode
-        const response = await api.put(`/tasks/${activeTask.id}`, payload);
-        setTasks((prev) =>
-          prev.map((t) => (t.id === activeTask.id ? { ...response.data.task, totalLoggedTime: t.totalLoggedTime } : t))
-        );
+        await api.put(`/tasks/${activeTask.id}`, payload);
         navigate(`/home/projects/${projectId}`);
       } else {
         // Create mode
-        const response = await api.post("/tasks", payload);
-        setTasks((prev) => [...prev, response.data.task]);
+        await api.post("/tasks", payload);
         setShowModal(false);
       }
+      fetchTasks();
       onTasksChange();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to save task.");
@@ -228,10 +253,8 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
   const handleQuickStatusChange = async (task: Task, newStatus: "To Do" | "In Progress" | "Done") => {
     try {
-      const response = await api.put(`/tasks/${task.id}`, { status: newStatus });
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...response.data.task, totalLoggedTime: t.totalLoggedTime } : t))
-      );
+      await api.put(`/tasks/${task.id}`, { status: newStatus });
+      fetchTasks();
       onTasksChange();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to update task status.");
@@ -245,8 +268,8 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
     try {
       await api.delete(`/tasks/${activeTask.id}`);
-      setTasks((prev) => prev.filter((t) => t.id !== activeTask.id));
       navigate(`/home/projects/${projectId}`);
+      fetchTasks();
       onTasksChange();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete task.");
@@ -284,16 +307,144 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", height: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", paddingBottom: "10px", borderBottom: "1px solid #f0f0f0" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.95rem", color: "#333", userSelect: "none" }}>
-          <input
-            type="checkbox"
-            checked={overdueOnly}
-            onChange={(e) => setOverdueOnly(e.target.checked)}
-            style={{ width: "16px", height: "16px", cursor: "pointer" }}
-          />
-          Show Overdue Only
-        </label>
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "15px",
+        paddingBottom: "15px",
+        borderBottom: "1px solid #f0f0f0"
+      }}>
+        {/* Left Side: Search and Dropdowns */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", flex: 1, minWidth: "280px" }}>
+          <div style={{ position: "relative", flex: 1, maxWidth: "300px", minWidth: "180px" }}>
+            <input
+              type="text"
+              placeholder="Search by title or description..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px 8px 32px",
+                fontSize: "0.9rem",
+                borderRadius: "6px",
+                border: "1px solid #ccc",
+                backgroundColor: "#fff",
+                color: "#333",
+                boxSizing: "border-box",
+                outline: "none",
+                transition: "border-color 0.2s"
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#0052cc"}
+              onBlur={(e) => e.target.style.borderColor = "#ccc"}
+            />
+            {/* Search Icon */}
+            <span style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              fontSize: "0.9rem",
+              color: "#aaa",
+              pointerEvents: "none"
+            }}>🔍</span>
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              padding: "8px 12px",
+              fontSize: "0.9rem",
+              borderRadius: "6px",
+              border: "1px solid #ccc",
+              backgroundColor: "#fff",
+              color: "#333",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            <option value="">All Statuses</option>
+            <option value="To Do">To Do</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Done">Done</option>
+          </select>
+
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            style={{
+              padding: "8px 12px",
+              fontSize: "0.9rem",
+              borderRadius: "6px",
+              border: "1px solid #ccc",
+              backgroundColor: "#fff",
+              color: "#333",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            <option value="">All Priorities</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+
+          {(search || statusFilter || priorityFilter || overdueOnly) && (
+            <button
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("");
+                setPriorityFilter("");
+                setOverdueOnly(false);
+              }}
+              style={{
+                padding: "8px 14px",
+                fontSize: "0.85rem",
+                borderRadius: "6px",
+                border: "none",
+                backgroundColor: "#f4f5f7",
+                color: "#5e6c84",
+                cursor: "pointer",
+                fontWeight: "600",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#ebecf0"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f4f5f7"}
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+
+        {/* Right Side: Overdue Toggle */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <label style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            color: "#333",
+            userSelect: "none",
+            backgroundColor: overdueOnly ? "#ffebe6" : "transparent",
+            padding: "6px 12px",
+            borderRadius: "6px",
+            border: overdueOnly ? "1px solid #ffbdad" : "1px solid transparent",
+            transition: "all 0.2s"
+          }}>
+            <input
+              type="checkbox"
+              checked={overdueOnly}
+              onChange={(e) => setOverdueOnly(e.target.checked)}
+              style={{ width: "16px", height: "16px", cursor: "pointer" }}
+            />
+            <span style={{ fontWeight: overdueOnly ? "600" : "normal", color: overdueOnly ? "#bf2600" : "#333" }}>
+              Show Overdue Only
+            </span>
+          </label>
+        </div>
       </div>
 
       {loading ? (
