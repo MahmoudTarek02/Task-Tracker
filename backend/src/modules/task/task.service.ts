@@ -57,6 +57,7 @@ class TaskService {
 
     if (!project) {
       throw new NotFoundError("Project not found or access denied.");
+<<<<<<< HEAD
     }
 
     const whereClause: any = { projectId };
@@ -83,6 +84,8 @@ class TaskService {
       whereClause.status = {
         [Op.ne]: "Done",
       };
+=======
+>>>>>>> 660de06 (refactor: add centralized error handling and route-level validation middleware)
     }
 
     const whereClause: any = { projectId };
