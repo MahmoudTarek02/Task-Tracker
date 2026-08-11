@@ -1,17 +1,18 @@
 import { TimeEntry, Task, Project } from "../../database/models";
+import { NotFoundError } from "../../utils/errors";
 
 class TimeEntryService {
   private async verifyTaskAccess(taskId: string, userId: string): Promise<Task> {
     const task = await Task.findByPk(taskId);
     if (!task) {
-      throw new Error("Task not found or access denied.");
+      throw new NotFoundError("Task not found or access denied.");
     }
 
     const project = await Project.findOne({
       where: { id: task.getDataValue("projectId"), userId },
     });
     if (!project) {
-      throw new Error("Task not found or access denied.");
+      throw new NotFoundError("Task not found or access denied.");
     }
 
     return task;
@@ -20,19 +21,19 @@ class TimeEntryService {
   private async verifyEntryAccess(entryId: string, userId: string): Promise<TimeEntry> {
     const entry = await TimeEntry.findByPk(entryId);
     if (!entry) {
-      throw new Error("Time entry not found or access denied.");
+      throw new NotFoundError("Time entry not found or access denied.");
     }
 
     const task = await Task.findByPk(entry.getDataValue("taskId"));
     if (!task) {
-      throw new Error("Associated task not found.");
+      throw new NotFoundError("Associated task not found.");
     }
 
     const project = await Project.findOne({
       where: { id: task.getDataValue("projectId"), userId },
     });
     if (!project) {
-      throw new Error("Time entry not found or access denied.");
+      throw new NotFoundError("Time entry not found or access denied.");
     }
 
     return entry;
@@ -51,7 +52,6 @@ class TimeEntryService {
     return timeEntry;
   }
 
-
   async getTimeEntriesForTask(userId: string, taskId: string) {
     const task = await this.verifyTaskAccess(taskId, userId);
 
@@ -63,8 +63,6 @@ class TimeEntryService {
       ],
     });
 
-    // calculate the total time logged for the task
-    // by iterating through the time entries and adding the duration of each entry
     const totalLoggedTime = timeEntries.reduce(
       (sum, entry) => sum + Number(entry.getDataValue("duration")),
       0
@@ -85,10 +83,10 @@ class TimeEntryService {
     }
 
     return {
-      timeEntries, // returns the list of time entries for the task
-      totalLoggedTime, // returns the total time logged for the task
-      remainingTime, // returns the remaining time for the task
-      overrunTime, // returns the overrun time for the task
+      timeEntries,
+      totalLoggedTime,
+      remainingTime,
+      overrunTime,
     };
   }
 

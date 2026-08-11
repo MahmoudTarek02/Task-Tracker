@@ -1,5 +1,6 @@
 import { Project } from "../../database/models";
-import { UniqueConstraintError, Sequelize } from "sequelize"; 
+import { UniqueConstraintError, Sequelize } from "sequelize";
+import { ConflictError, NotFoundError } from "../../utils/errors";
 
 class ProjectService {
   async createProject(
@@ -12,7 +13,7 @@ class ProjectService {
     });
 
     if (existing) {
-      throw new Error("A project with this name already exists.");
+      throw new ConflictError("A project with this name already exists.");
     }
 
     // The database now enforces UNIQUE(userId, name) to prevent duplicate
@@ -88,7 +89,7 @@ class ProjectService {
     const project = await this.getProjectByIdAndUser(projectId, userId);
 
     if (!project) {
-      throw new Error("Project not found or access denied.");
+      throw new NotFoundError("Project not found or access denied.");
     }
 
     if (
@@ -103,7 +104,7 @@ class ProjectService {
       });
 
       if (existing) {
-        throw new Error("A project with this name already exists.");
+        throw new ConflictError("A project with this name already exists.");
       }
     }
 
@@ -116,7 +117,7 @@ class ProjectService {
       // Convert the database unique constraint violation into
       // the same application-level duplicate-name error.
       if (error instanceof UniqueConstraintError) {
-        throw new Error("A project with this name already exists.");
+        throw new ConflictError("A project with this name already exists.");
       }
 
       throw error;
@@ -127,7 +128,7 @@ class ProjectService {
     const project = await this.getProjectByIdAndUser(projectId, userId);
 
     if (!project) {
-      throw new Error("Project not found or access denied.");
+      throw new NotFoundError("Project not found or access denied.");
     }
 
     await project.destroy();

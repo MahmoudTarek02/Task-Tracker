@@ -5,12 +5,10 @@ import authRoutes from "./modules/auth/auth.routes";
 import projectRoutes from "./modules/project/project.routes";
 import taskRoutes from "./modules/task/task.routes";
 import timeEntryRoutes from "./modules/time-entry/time-entry.routes";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 
-// Enable CORS (Cross-Origin Resource Sharing) middleware.
-// This allows the backend to accept API requests from other domains/ports (like the React frontend running on port 5173).
-// Without CORS, browser security policies (Same-Origin Policy) would block frontend requests because the ports differ.
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -29,4 +27,6 @@ app.get("/", (_req, res) => {
   res.send("TaskTrack API is running!");
 });
 
-export default app;
+app.use(errorHandler);
+
+export default app;
