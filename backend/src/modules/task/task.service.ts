@@ -1,4 +1,4 @@
-import { Task, Project } from "../../database/models";
+import { Task, Project, TaskAuditLog, User } from "../../database/models";
 import { UniqueConstraintError, Op } from "sequelize";
 import { sequelize } from "../../config/database";
 import { NotFoundError, ConflictError } from "../../utils/errors";
@@ -28,6 +28,11 @@ class TaskService {
     // that could both pass the findOne() check.
     try {
       const task = await Task.create(taskData);
+      await TaskAuditLog.create({
+        taskId: task.getDataValue("id"),
+        userId,
+        action: "create",
+      });
       return task;
     } catch (error) {
       // Handle a duplicate detected by the database-level unique constraint.
@@ -175,10 +180,43 @@ class TaskService {
       }
     }
 
+    const fieldsToCheck = ["title", "description", "priority", "estimatedTime", "dueDate", "status"];
+    const auditEntries = [];
+
+    for (const field of fieldsToCheck) {
+      if (updateData[field] !== undefined) {
+        const oldValue = task.getDataValue(field);
+        const newValue = updateData[field];
+
+        let isChanged = false;
+        if (field === "dueDate") {
+          const oldTime = oldValue ? new Date(oldValue).getTime() : null;
+          const newTime = newValue ? new Date(newValue).getTime() : null;
+          isChanged = oldTime !== newTime;
+        } else {
+          isChanged = String(oldValue ?? "") !== String(newValue ?? "");
+        }
+
+        if (isChanged) {
+          auditEntries.push({
+            taskId: task.getDataValue("id"),
+            userId,
+            action: "update",
+            fieldName: field,
+            oldValue: oldValue !== null && oldValue !== undefined ? String(oldValue) : null,
+            newValue: newValue !== null && newValue !== undefined ? String(newValue) : null,
+          });
+        }
+      }
+    }
+
     // The database-level unique constraint also applies to updates.
     // Catch violations caused by concurrent requests changing task titles.
     try {
       await task.update(updateData);
+      if (auditEntries.length > 0) {
+        await TaskAuditLog.bulkCreate(auditEntries);
+      }
       return task;
     } catch (error) {
       // Convert the database unique constraint violation into
@@ -205,6 +243,27 @@ class TaskService {
     return {
       message: "Task deleted successfully",
     };
+  }
+
+  async getTaskHistory(userId: string, taskId: string) {
+    const task = await this.getTaskByIdAndUser(taskId, userId);
+    if (!task) {
+      throw new NotFoundError("Task not found or access denied.");
+    }
+
+    const history = await TaskAuditLog.findAll({
+      where: { taskId },
+      include: [
+        {
+          model: User,
+          as: "actor",
+          attributes: ["id", "name", "email"],
+        },
+      ],
+      order: [["createdAt", "ASC"]],
+    });
+
+    return history;
   }
 }
 

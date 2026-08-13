@@ -14,6 +14,7 @@ router.post("/", validate(createTaskSchema), taskController.create);
 router.get("/", validate(getTasksQuerySchema, "query"), taskController.list);
 router.put("/:id", validate(updateTaskSchema), taskController.update);
 router.delete("/:id", taskController.delete);
+router.get("/:id/history", taskController.history);
 
 router.post("/:taskId/time-entries", validate(createTimeEntrySchema), timeEntryController.create);
 router.get("/:taskId/time-entries", timeEntryController.list);

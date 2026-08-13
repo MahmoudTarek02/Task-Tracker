@@ -59,6 +59,78 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [timeError, setTimeError] = useState<string | null>(null);
 
+  // Audit History states
+  const [activeTab, setActiveTab] = useState<"time" | "history">("time");
+  const [historyEntries, setHistoryEntries] = useState<any[]>([]);
+
+  const fetchTaskHistory = async (taskId: string) => {
+    try {
+      const response = await api.get(`/tasks/${taskId}/history`);
+      setHistoryEntries(response.data.history || []);
+    } catch (err) {
+      console.error("Failed to fetch task history:", err);
+    }
+  };
+
+  const formatHistoryEntry = (entry: any) => {
+    const parseJSON = (str: string) => {
+      try {
+        return JSON.parse(str);
+      } catch {
+        return {};
+      }
+    };
+
+    switch (entry.action) {
+      case "create":
+        return "Created the task";
+      case "update": {
+        const field = entry.fieldName;
+        const oldVal = entry.oldValue;
+        const newVal = entry.newValue;
+
+        if (field === "title") {
+          return `Changed title from "${oldVal}" to "${newVal}"`;
+        }
+        if (field === "description") {
+          return `Changed description from "${oldVal || "(none)"}" to "${newVal || "(none)"}"`;
+        }
+        if (field === "status") {
+          return `Changed status from "${oldVal}" to "${newVal}"`;
+        }
+        if (field === "priority") {
+          return `Changed priority from "${oldVal}" to "${newVal}"`;
+        }
+        if (field === "estimatedTime") {
+          const oldEst = oldVal ? `${oldVal}m` : "none";
+          const newEst = newVal ? `${newVal}m` : "none";
+          return `Changed estimate from ${oldEst} to ${newEst}`;
+        }
+        if (field === "dueDate") {
+          const oldDateStr = oldVal ? new Date(oldVal).toISOString().split("T")[0] : "none";
+          const newDateStr = newVal ? new Date(newVal).toISOString().split("T")[0] : "none";
+          return `Changed due date from ${oldDateStr} to ${newDateStr}`;
+        }
+        return `Changed ${field} from "${oldVal || "none"}" to "${newVal || "none"}"`;
+      }
+      case "time_entry_create": {
+        const parsed = parseJSON(entry.newValue);
+        return `Logged work: ${parsed.duration}m on ${parsed.date}${parsed.note ? ` (Note: "${parsed.note}")` : ""}`;
+      }
+      case "time_entry_update": {
+        const oldP = parseJSON(entry.oldValue);
+        const newP = parseJSON(entry.newValue);
+        return `Updated logged work: changed from ${oldP.duration}m on ${oldP.date}${oldP.note ? ` (Note: "${oldP.note}")` : ""} to ${newP.duration}m on ${newP.date}${newP.note ? ` (Note: "${newP.note}")` : ""}`;
+      }
+      case "time_entry_delete": {
+        const parsed = parseJSON(entry.oldValue);
+        return `Deleted logged work of ${parsed.duration}m on ${parsed.date}${parsed.note ? ` (Note: "${parsed.note}")` : ""}`;
+      }
+      default:
+        return `Performed ${entry.action} action`;
+    }
+  };
+
   const fetchTimeEntries = async (taskId: string) => {
     try {
       const response = await api.get(`/tasks/${taskId}/time-entries`);
@@ -94,6 +166,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         await api.post(`/tasks/${activeTask.id}/time-entries`, payload);
       }
       await fetchTimeEntries(activeTask.id);
+      await fetchTaskHistory(activeTask.id);
       setLogDuration("");
       setLogDate(new Date().toISOString().split("T")[0]);
       setLogNote("");
@@ -127,6 +200,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
       await api.delete(`/time-entries/${entryId}`);
       if (activeTask) {
         await fetchTimeEntries(activeTask.id);
+        await fetchTaskHistory(activeTask.id);
         fetchTasks();
       }
     } catch (err: any) {
@@ -191,6 +265,8 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         setError(null);
         setShowModal(true);
         fetchTimeEntries(task.id);
+        fetchTaskHistory(task.id);
+        setActiveTab("time");
         setLogDuration("");
         setLogDate(new Date().toISOString().split("T")[0]);
         setLogNote("");
@@ -839,7 +915,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
               </div>
             </form>
 
-            {/* Right Column: Time Tracking Log */}
+            {/* Right Column: Time Tracking & Audit History */}
             {activeTask && (
               <div style={{
                 flex: 1,
@@ -849,133 +925,199 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
                 flexDirection: "column",
                 gap: "16px"
               }}>
-                <h4 style={{ margin: 0, fontSize: "1rem", color: "#333" }}>Time Tracking</h4>
-                
-                {/* Stats */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", backgroundColor: "#f8f9fa", padding: "12px", borderRadius: "6px" }}>
-                  <div style={{ flex: 1, minWidth: "80px" }}>
-                    <div style={{ fontSize: "0.8rem", color: "#666" }}>Logged Time</div>
-                    <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#333" }}>{totalLoggedTime}m</div>
-                  </div>
-                  {remainingTime !== null && (
-                    <div style={{ flex: 1, minWidth: "80px" }}>
-                      <div style={{ fontSize: "0.8rem", color: "#666" }}>Remaining</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: remainingTime > 0 ? "#28a745" : "#333" }}>
-                        {remainingTime}m
-                      </div>
-                    </div>
-                  )}
-                  {overrunTime !== null && overrunTime > 0 && (
-                    <div style={{ flex: 1, minWidth: "80px" }}>
-                      <div style={{ fontSize: "0.8rem", color: "#dc3545" }}>Overrun ⚠️</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#dc3545" }}>
-                        {overrunTime}m
-                      </div>
-                    </div>
-                  )}
+                {/* Tab Switcher */}
+                <div style={{ display: "flex", borderBottom: "1px solid #eee", gap: "16px", marginBottom: "4px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("time")}
+                    style={{
+                      border: "none",
+                      background: "none",
+                      paddingBottom: "8px",
+                      fontSize: "0.95rem",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      color: activeTab === "time" ? "#0052cc" : "#666",
+                      borderBottom: activeTab === "time" ? "2px solid #0052cc" : "2px solid transparent",
+                      outline: "none"
+                    }}
+                  >
+                    Time Tracking
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("history")}
+                    style={{
+                      border: "none",
+                      background: "none",
+                      paddingBottom: "8px",
+                      fontSize: "0.95rem",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      color: activeTab === "history" ? "#0052cc" : "#666",
+                      borderBottom: activeTab === "history" ? "2px solid #0052cc" : "2px solid transparent",
+                      outline: "none"
+                    }}
+                  >
+                    Activity History
+                  </button>
                 </div>
 
-                {/* Log Entry Form */}
-                <form onSubmit={handleTimeSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "12px", border: "1px solid #e9e9e9", borderRadius: "6px", backgroundColor: "#fafafa" }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#555" }}>
-                    {editingEntryId ? "Edit Time Entry" : "Log Work"}
-                  </div>
-                  
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <label style={{ fontSize: "0.75rem", color: "#666" }}>Duration (m)*</label>
-                      <input
-                        type="number"
-                        min="1"
-                        required
-                        value={logDuration}
-                        onChange={(e) => setLogDuration(e.target.value === "" ? "" : Number(e.target.value))}
-                        style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333" }}
-                      />
+                {activeTab === "time" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px", flex: 1 }}>
+                    {/* Stats */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", backgroundColor: "#f8f9fa", padding: "12px", borderRadius: "6px" }}>
+                      <div style={{ flex: 1, minWidth: "80px" }}>
+                        <div style={{ fontSize: "0.8rem", color: "#666" }}>Logged Time</div>
+                        <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#333" }}>{totalLoggedTime}m</div>
+                      </div>
+                      {remainingTime !== null && (
+                        <div style={{ flex: 1, minWidth: "80px" }}>
+                          <div style={{ fontSize: "0.8rem", color: "#666" }}>Remaining</div>
+                          <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: remainingTime > 0 ? "#28a745" : "#333" }}>
+                            {remainingTime}m
+                          </div>
+                        </div>
+                      )}
+                      {overrunTime !== null && overrunTime > 0 && (
+                        <div style={{ flex: 1, minWidth: "80px" }}>
+                          <div style={{ fontSize: "0.8rem", color: "#dc3545" }}>Overrun ⚠️</div>
+                          <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#dc3545" }}>
+                            {overrunTime}m
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <label style={{ fontSize: "0.75rem", color: "#666" }}>Date*</label>
-                      <input
-                        type="date"
-                        required
-                        value={logDate}
-                        onChange={(e) => setLogDate(e.target.value)}
-                        style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333", colorScheme: "light" }}
-                      />
+
+                    {/* Log Entry Form */}
+                    <form onSubmit={handleTimeSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "12px", border: "1px solid #e9e9e9", borderRadius: "6px", backgroundColor: "#fafafa" }}>
+                      <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#555" }}>
+                        {editingEntryId ? "Edit Time Entry" : "Log Work"}
+                      </div>
+                      
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <label style={{ fontSize: "0.75rem", color: "#666" }}>Duration (m)*</label>
+                          <input
+                            type="number"
+                            min="1"
+                            required
+                            value={logDuration}
+                            onChange={(e) => setLogDuration(e.target.value === "" ? "" : Number(e.target.value))}
+                            style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333" }}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <label style={{ fontSize: "0.75rem", color: "#666" }}>Date*</label>
+                          <input
+                            type="date"
+                            required
+                            value={logDate}
+                            onChange={(e) => setLogDate(e.target.value)}
+                            style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333", colorScheme: "light" }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "0.75rem", color: "#666" }}>Note (optional)</label>
+                        <input
+                          type="text"
+                          placeholder="What did you work on?"
+                          value={logNote}
+                          onChange={(e) => setLogNote(e.target.value)}
+                          style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333" }}
+                        />
+                      </div>
+
+                      {timeError && <span style={{ color: "#dc3545", fontSize: "0.75rem" }}>{timeError}</span>}
+
+                      <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                        <button
+                          type="submit"
+                          style={{ flex: 1, padding: "6px 12px", backgroundColor: "#0052cc", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" }}
+                        >
+                          {editingEntryId ? "Save Log" : "Log Work"}
+                        </button>
+                        {editingEntryId && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEditEntry}
+                            style={{ padding: "6px 12px", backgroundColor: "#fff", color: "#333", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </form>
+
+                    {/* Entry Log List */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, overflowY: "auto", maxHeight: "200px", border: "1px solid #eee", padding: "8px", borderRadius: "6px" }}>
+                      <div style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#666" }}>Logged Sessions</div>
+                      {timeEntries.length === 0 ? (
+                        <div style={{ fontSize: "0.8rem", color: "#999", fontStyle: "italic", textAlign: "center", padding: "16px 0" }}>
+                          No work logged yet.
+                        </div>
+                      ) : (
+                        timeEntries.map((entry) => (
+                          <div key={entry.id} style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px", border: "1px solid #f0f0f0", borderRadius: "4px", backgroundColor: "#fafafa" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#333" }}>{entry.duration}m</span>
+                              <span style={{ fontSize: "0.75rem", color: "#777" }}>{entry.date}</span>
+                            </div>
+                            {entry.note && (
+                              <div style={{ fontSize: "0.75rem", color: "#555", wordBreak: "break-word" }}>
+                                {entry.note}
+                              </div>
+                            )}
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "2px" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleEditEntry(entry)}
+                                style={{ border: "none", backgroundColor: "transparent", color: "#0052cc", cursor: "pointer", fontSize: "0.7rem", padding: "2px 0" }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEntry(entry.id)}
+                                style={{ border: "none", backgroundColor: "transparent", color: "#dc3545", cursor: "pointer", fontSize: "0.7rem", padding: "2px 0" }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
+                )}
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <label style={{ fontSize: "0.75rem", color: "#666" }}>Note (optional)</label>
-                    <input
-                      type="text"
-                      placeholder="What did you work on?"
-                      value={logNote}
-                      onChange={(e) => setLogNote(e.target.value)}
-                      style={{ padding: "6px", fontSize: "0.85rem", border: "1px solid #ccc", borderRadius: "4px", backgroundColor: "#fff", color: "#333" }}
-                    />
-                  </div>
-
-                  {timeError && <span style={{ color: "#dc3545", fontSize: "0.75rem" }}>{timeError}</span>}
-
-                  <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                    <button
-                      type="submit"
-                      style={{ flex: 1, padding: "6px 12px", backgroundColor: "#0052cc", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" }}
-                    >
-                      {editingEntryId ? "Save Log" : "Log Work"}
-                    </button>
-                    {editingEntryId && (
-                      <button
-                        type="button"
-                        onClick={handleCancelEditEntry}
-                        style={{ padding: "6px 12px", backgroundColor: "#fff", color: "#333", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem" }}
-                      >
-                        Cancel
-                      </button>
+                {activeTab === "history" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, overflowY: "auto", maxHeight: "400px", padding: "4px 0" }}>
+                    <div style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#666", marginBottom: "4px" }}>Task Activity Log</div>
+                    {historyEntries.length === 0 ? (
+                      <div style={{ fontSize: "0.8rem", color: "#999", fontStyle: "italic", textAlign: "center", padding: "16px 0" }}>
+                        No changes recorded yet.
+                      </div>
+                    ) : (
+                      historyEntries.map((entry) => {
+                        const description = formatHistoryEntry(entry);
+                        return (
+                          <div key={entry.id} style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px", border: "1px solid #f0f0f0", borderRadius: "4px", backgroundColor: "#fafafa" }}>
+                            <div style={{ fontSize: "0.8rem", color: "#333", fontWeight: 500, wordBreak: "break-word" }}>
+                              {description}
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.7rem", color: "#777", marginTop: "2px" }}>
+                              <span>By: {entry.actor?.name || entry.actor?.email || "Unknown"}</span>
+                              <span>{new Date(entry.createdAt).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
-                </form>
-
-                {/* Entry Log List */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, overflowY: "auto", maxHeight: "200px", border: "1px solid #eee", padding: "8px", borderRadius: "6px" }}>
-                  <div style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#666" }}>Logged Sessions</div>
-                  {timeEntries.length === 0 ? (
-                    <div style={{ fontSize: "0.8rem", color: "#999", fontStyle: "italic", textAlign: "center", padding: "16px 0" }}>
-                      No work logged yet.
-                    </div>
-                  ) : (
-                    timeEntries.map((entry) => (
-                      <div key={entry.id} style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px", border: "1px solid #f0f0f0", borderRadius: "4px", backgroundColor: "#fafafa" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#333" }}>{entry.duration}m</span>
-                          <span style={{ fontSize: "0.75rem", color: "#777" }}>{entry.date}</span>
-                        </div>
-                        {entry.note && (
-                          <div style={{ fontSize: "0.75rem", color: "#555", wordBreak: "break-word" }}>
-                            {entry.note}
-                          </div>
-                        )}
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "2px" }}>
-                          <button
-                            type="button"
-                            onClick={() => handleEditEntry(entry)}
-                            style={{ border: "none", backgroundColor: "transparent", color: "#0052cc", cursor: "pointer", fontSize: "0.7rem", padding: "2px 0" }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteEntry(entry.id)}
-                            style={{ border: "none", backgroundColor: "transparent", color: "#dc3545", cursor: "pointer", fontSize: "0.7rem", padding: "2px 0" }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                )}
               </div>
             )}
             </div>

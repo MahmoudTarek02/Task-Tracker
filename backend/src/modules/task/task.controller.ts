@@ -89,6 +89,15 @@ class TaskController {
 
     return res.status(200).json(result);
   }
+
+  async history(req: Request, res: Response) {
+    const authReq = req as any;
+    const id = req.params.id as string;
+    const history = await taskService.getTaskHistory(authReq.user.id, id);
+    return res.status(200).json({
+      history,
+    });
+  }
 }
 
 export default new TaskController();
