@@ -7,6 +7,8 @@ import taskRoutes from "./modules/task/task.routes";
 import timeEntryRoutes from "./modules/time-entry/time-entry.routes";
 import { errorHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
+import swaggerUi from "swagger-ui-express";
+import { openapiSpec } from "./docs/openapi";
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use(express.json()); // to parse JSON body of the incoming request
 // each request will be logged with its method, url, status code, and duration
 // this should be before all routes
 app.use(requestLogger);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 app.use("/auth", authRoutes);
 app.use("/projects", projectRoutes);
