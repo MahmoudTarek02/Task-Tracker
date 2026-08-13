@@ -174,6 +174,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
   useEffect(() => {
     fetchTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, debouncedSearch, statusFilter, priorityFilter, overdueOnly]);
 
   useEffect(() => {
