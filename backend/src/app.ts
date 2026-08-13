@@ -6,6 +6,7 @@ import projectRoutes from "./modules/project/project.routes";
 import taskRoutes from "./modules/task/task.routes";
 import timeEntryRoutes from "./modules/time-entry/time-entry.routes";
 import { errorHandler } from "./middlewares/errorHandler";
+import { requestLogger } from "./middlewares/requestLogger";
 
 const app = express();
 
@@ -15,8 +16,11 @@ app.use(
     credentials: true,
   })
 );
-app.use(cookieParser());
-app.use(express.json());
+app.use(cookieParser()); // to read the cookie from the incoming request
+app.use(express.json()); // to parse JSON body of the incoming request
+// each request will be logged with its method, url, status code, and duration
+// this should be before all routes
+app.use(requestLogger);
 
 app.use("/auth", authRoutes);
 app.use("/projects", projectRoutes);
@@ -29,4 +33,4 @@ app.get("/", (_req, res) => {
 
 app.use(errorHandler);
 
-export default app;
+export default app;

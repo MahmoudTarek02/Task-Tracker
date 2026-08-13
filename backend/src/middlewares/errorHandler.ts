@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { logger } from "../utils/logger";
 
 export const errorHandler = (
   err: any,
@@ -6,9 +7,8 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error("Centralized Error Log:", err);
-
   if (err && typeof err.statusCode === "number") {
+    logger.warn(`Operational Error: ${err.message}`, { statusCode: err.statusCode, details: err.details });
     return res.status(err.statusCode).json({
       message: err.message,
       errors: err.details || undefined,
@@ -20,6 +20,7 @@ export const errorHandler = (
       field: e.path,
       message: e.message,
     }));
+    logger.warn(`Sequelize Validation Error: ${err.message}`, { details });
     return res.status(400).json({
       message: "Validation failed",
       errors: details,
@@ -31,11 +32,17 @@ export const errorHandler = (
       field: e.path,
       message: e.message,
     }));
+    logger.warn(`Sequelize Unique Constraint Error: ${err.message}`, { details });
     return res.status(409).json({
       message: err.message || "Conflict occurred",
       errors: details,
     });
   }
+
+  logger.error("Unhandled Internal Server Error:", {
+    message: err.message,
+    stack: err.stack,
+  });
 
   return res.status(500).json({
     message: "Internal Server Error",
