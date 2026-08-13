@@ -22,7 +22,7 @@ export function authenticateToken(
 
     req.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     throw new ForbiddenError("Invalid or expired token.");
   }
 }

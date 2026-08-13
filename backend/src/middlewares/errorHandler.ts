@@ -5,7 +5,7 @@ export const errorHandler = (
   err: any,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   if (err && typeof err.statusCode === "number") {
     logger.warn(`Operational Error: ${err.message}`, { statusCode: err.statusCode, details: err.details });

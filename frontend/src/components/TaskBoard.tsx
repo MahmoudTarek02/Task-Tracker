@@ -174,6 +174,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
   useEffect(() => {
     fetchTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, debouncedSearch, statusFilter, priorityFilter, overdueOnly]);
 
   useEffect(() => {
@@ -205,6 +206,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         setActiveTask(null);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, tasks]);
 
   const handleOpenCreateModal = (colStatus: "To Do" | "In Progress" | "Done") => {
