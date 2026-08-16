@@ -10,17 +10,19 @@ const scrubSecrets = winston.format((info) => {
   // this function masks the specified secrets in the log object
   // masks -> replace the secret with [REDACTED]
   const mask = (obj: any): any => {
-  if (!obj || typeof obj !== "object") return obj;
-  for (const key in obj) {
-    const lowerKey = key.toLowerCase();
-    if (secrets.some((secret) => lowerKey.includes(secret))) {
-      obj[key] = "[REDACTED]";
-    } else if (typeof obj[key] === "object") {
-      obj[key] = mask(obj[key]);
+    if (!obj || typeof obj !== "object") return obj;
+    for (const key in obj) {
+      const lowerKey = key.toLowerCase();
+      if (secrets.some((secret) => lowerKey.includes(secret))) {
+        obj[key] = "[REDACTED]";
+      }
+      // Recursive handling for nested objects
+      else if (typeof obj[key] === "object") {
+        obj[key] = mask(obj[key]);
+      }
     }
-  }
-  return obj;
-};
+    return obj;
+  };
 
   // this function masks the specified secrets in the log message USING REGEX
   if (typeof infoObj.message === "string") {
@@ -44,16 +46,16 @@ const format = winston.format.combine(
   isProduction
     ? winston.format.json()
     : winston.format.combine(
-        winston.format.colorize({ all: true }),
-        // winston.format.printf(
-        //   (info) => `${info.timestamp} ${info.level}: ${info.message}`
-        // )  
-        // will let the logger print metadata along with message and timestamp in development
-        winston.format.printf(({ timestamp, level, message, ...meta }) => {
-          const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
-          return `${timestamp} ${level}: ${message}${metaStr}`;
-        })
-      )
+      winston.format.colorize({ all: true }),
+      // winston.format.printf(
+      //   (info) => `${info.timestamp} ${info.level}: ${info.message}`
+      // )  
+      // will let the logger print metadata along with message and timestamp in development
+      winston.format.printf(({ timestamp, level, message, ...meta }) => {
+        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+        return `${timestamp} ${level}: ${message}${metaStr}`;
+      })
+    )
 );
 
 // transports: where the logger outputs the logs (e.g., console, file, database)
