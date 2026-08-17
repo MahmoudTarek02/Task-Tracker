@@ -110,6 +110,28 @@ describe("ProjectService", () => {
         projectService.updateProject("p123", "u123", { name: "Dup Name" })
       ).rejects.toThrow(new ConflictError("A project with this name already exists."));
     });
+
+    // Project.findOne returns the project (access granted), but project.update throws a unique constraint error from database
+    it("should handle unique constraint error from database during update", async () => {
+      const mockProject = {
+        getDataValue: vi.fn((key) => {
+          if (key === "name") return "Old Name";
+          return null;
+        }),
+        update: vi.fn().mockRejectedValue(new UniqueConstraintError({
+          message: "Unique constraint error",
+          errors: [],
+        })),
+      };
+      
+      vi.spyOn(Project, "findOne")
+        .mockResolvedValueOnce(mockProject as any) // first call from getProjectByIdAndUser
+        .mockResolvedValueOnce(null); // second call from duplicate check
+
+      await expect(
+        projectService.updateProject("p123", "u123", { name: "Duplicate Name" })
+      ).rejects.toThrow(new ConflictError("A project with this name already exists."));
+    });
   });
 
   describe("deleteProject", () => {
