@@ -36,6 +36,7 @@ describe("Winston Logger Scrubbing Filter", () => {
       token: "secret-token-abc",
       jwt: "jwt-value-xyz",
       authorization: "Bearer sensitive-auth",
+      clientSecret: "some-client-secret-123", // matches the "secret" keyword
       username: "john_doe", // should NOT scrub
     });
 
@@ -47,6 +48,7 @@ describe("Winston Logger Scrubbing Filter", () => {
     expect(logged.token).toBe("[REDACTED]"); // redacted
     expect(logged.jwt).toBe("[REDACTED]"); // redacted
     expect(logged.authorization).toBe("[REDACTED]"); // redacted 
+    expect(logged.clientSecret).toBe("[REDACTED]"); // redacted
     expect(logged.username).toBe("john_doe"); // not redacted 
   });
 
