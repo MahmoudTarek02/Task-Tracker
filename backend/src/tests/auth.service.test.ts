@@ -126,12 +126,39 @@ describe("AuthService", () => {
       });
       // Assert: Check the result - ends here
     });
+    // if an email is provided, it should be normalized to lowercase during registration.
+    it("should lowercase the email address during registration", async () => {
+      vi.spyOn(User, "findOne").mockResolvedValue(null);
+      const mockUser = {
+        getDataValue: vi.fn((key) => {
+          if (key === "id") return "new_user_uuid";
+          if (key === "name") return "John Doe";
+          if (key === "email") return "john@example.com";
+          return null;
+        }),
+      };
+      vi.spyOn(User, "create").mockResolvedValue(mockUser as any);
+      vi.spyOn(bcrypt, "hash").mockResolvedValue("hashed_password" as any);
+
+      await authService.register("John Doe", "JOHN@Example.Com", "password123");
+
+      // checks if existing user lookup was done with lowercased email
+      expect(User.findOne).toHaveBeenCalledWith({
+        where: { email: "john@example.com" },
+      });
+
+      // checks if new user record was created with lowercased email
+      expect(User.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "john@example.com", // JOHN@Example.Com becomes john@example.com
+        })
+      );
+    });
   });
+
   // Note:
   // verifyEmail feature was not requested, but it is included in the test case 
   // because not including it will drop the overall coverage percentage
-
-
   describe("verifyEmail", () => {
     it("should throw BadRequestError if token is invalid or expired", async () => {
       // Arrange: Set up the test environment and mocks - starts here
@@ -277,6 +304,29 @@ describe("AuthService", () => {
           email: "john@example.com",
         },
         token: "signed_jwt_token",
+      });
+    });
+
+    // same check as in registration, but now for login
+    it("should lowercase the email address during login", async () => {
+      const mockUser = {
+        getDataValue: vi.fn((key) => {
+          if (key === "password") return "hashed_password";
+          if (key === "id") return "user_id";
+          if (key === "name") return "John Doe";
+          if (key === "email") return "john@example.com";
+          return null;
+        }),
+      };
+      vi.spyOn(User, "findOne").mockResolvedValue(mockUser as any);
+      vi.spyOn(bcrypt, "compare").mockResolvedValue(true as any);
+      vi.spyOn(jwt, "sign").mockReturnValue("signed_jwt_token" as any);
+
+      await authService.login("JOHN@Example.Com", "password123");
+
+      // checks if user lookup was done with lowercased email
+      expect(User.findOne).toHaveBeenCalledWith({
+        where: { email: "john@example.com" },
       });
     });
   });
