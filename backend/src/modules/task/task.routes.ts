@@ -19,7 +19,5 @@ router.get("/:id/history", taskController.history);
 router.post("/:taskId/time-entries", validate(createTimeEntrySchema), timeEntryController.create);
 router.get("/:taskId/time-entries", timeEntryController.list);
 
-router.post("/:taskId/time-entries", validate(createTimeEntrySchema), timeEntryController.create);
-router.get("/:taskId/time-entries", timeEntryController.list);
-
 export default router;
+

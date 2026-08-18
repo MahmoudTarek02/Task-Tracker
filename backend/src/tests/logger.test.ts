@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { logger } from "../utils/logger";
 import Transport from "winston-transport";
 
@@ -26,6 +26,10 @@ describe("Winston Logger Scrubbing Filter", () => {
   beforeEach(() => {
     memoryTransport = new MemoryTransport();
     logger.add(memoryTransport); // .add() method adds a new transport to the logger. 
+  });
+
+  afterEach(() => {
+    logger.remove(memoryTransport);
   });
 
   it("should scrub secrets from metadata object fields", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import api from "../services/api";
 import "./TaskBoard.css";
@@ -209,7 +209,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
     }
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       setFetchError(null);
@@ -237,7 +237,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, debouncedSearch, statusFilter, priorityFilter, overdueOnly]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -249,7 +249,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
   useEffect(() => {
     fetchTasks();
-  }, [projectId, debouncedSearch, statusFilter, priorityFilter, overdueOnly]);
+  }, [fetchTasks]);
 
   useEffect(() => {
     if (taskId && tasks.length > 0) {
