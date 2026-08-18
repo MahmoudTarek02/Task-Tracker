@@ -10,6 +10,8 @@
     "pg": "^8.22.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.19.0",
     "zod": "^4.4.3"
   },
   "name": "backend",
@@ -17,9 +19,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "node node_modules/typescript/bin/tsc",
     "start": "node dist/server.js",
-    "test": "echo \"No tests yet\""
+    "test": "echo \"No tests yet\"",
+    "lint": "eslint \"src/**/*.ts\""
   },
   "keywords": [],
   "author": "",
@@ -33,8 +36,13 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.1.2",
     "@types/nodemailer": "^8.0.1",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "eslint": "^10.8.1",
     "sequelize-cli": "^6.6.5",
     "tsx": "^4.23.5",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "typescript-real": "npm:typescript@^5.5.4"
   }
 }

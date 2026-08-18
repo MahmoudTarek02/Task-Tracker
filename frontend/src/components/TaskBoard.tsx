@@ -26,6 +26,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -136,6 +137,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
   const fetchTasks = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       const queryParams = new URLSearchParams();
       queryParams.append("projectId", projectId);
 
@@ -156,6 +158,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
       setTasks(response.data.tasks || []);
     } catch (err: any) {
       console.error("Failed to load tasks:", err);
+      setFetchError(err.response?.data?.message || "Failed to load tasks.");
     } finally {
       setLoading(false);
     }
@@ -171,6 +174,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
   useEffect(() => {
     fetchTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, debouncedSearch, statusFilter, priorityFilter, overdueOnly]);
 
   useEffect(() => {
@@ -202,6 +206,7 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
         setActiveTask(null);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, tasks]);
 
   const handleOpenCreateModal = (colStatus: "To Do" | "In Progress" | "Done") => {
@@ -449,6 +454,11 @@ export default function TaskBoard({ projectId, onTasksChange }: TaskBoardProps) 
 
       {loading ? (
         <div style={{ fontSize: "1.1rem", color: "#666" }}>Loading tasks...</div>
+      ) : fetchError ? (
+        <div style={{ padding: "20px", backgroundColor: "#ffebe6", color: "#c53929", borderRadius: "6px", border: "1px solid #ffd2cc", display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }}>
+          <div>{fetchError}</div>
+          <button onClick={fetchTasks} style={{ padding: "8px 16px", backgroundColor: "#de350b", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "600" }}>Retry</button>
+        </div>
       ) : (
         <div style={{ display: "flex", gap: "20px", flex: 1, height: "100%", minHeight: "500px" }}>
           {columns.map((col) => {

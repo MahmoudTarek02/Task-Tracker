@@ -57,3 +57,11 @@ export const updateTaskSchema = z.object({
     .optional()
     .nullable(),
 });
+
+export const getTasksQuerySchema = z.object({
+  projectId: z.string().uuid("projectId must be a valid UUID"),
+  search: z.string().optional(),
+  status: z.enum(["To Do", "In Progress", "Done"]).or(z.literal("")).optional(),
+  priority: z.enum(["Low", "Medium", "High"]).or(z.literal("")).optional(),
+  overdue: z.string().optional(),
+});

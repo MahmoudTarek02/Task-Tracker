@@ -1,6 +1,7 @@
 import { Task, Project } from "../../database/models";
 import { UniqueConstraintError, Op } from "sequelize";
 import { sequelize } from "../../config/database";
+import { NotFoundError, ConflictError } from "../../utils/errors";
 
 class TaskService {
   async createTask(userId: string, taskData: any) {
@@ -11,7 +12,7 @@ class TaskService {
     });
 
     if (!project) {
-      throw new Error("Project not found or access denied.");
+      throw new NotFoundError("Project not found or access denied.");
     }
 
     const existing = await Task.findOne({
@@ -19,9 +20,7 @@ class TaskService {
     });
 
     if (existing) {
-      throw new Error(
-        "A task with this title already exists in this project."
-      );
+      throw new ConflictError("A task with this title already exists in this project.");
     }
 
     // The database now enforces UNIQUE(projectId, title).
@@ -57,7 +56,7 @@ class TaskService {
     });
 
     if (!project) {
-      throw new Error("Project not found or access denied.");
+      throw new NotFoundError("Project not found or access denied.");
     }
 
     const whereClause: any = { projectId };
@@ -128,7 +127,7 @@ class TaskService {
     const task = await this.getTaskByIdAndUser(taskId, userId);
 
     if (!task) {
-      throw new Error("Task not found or access denied.");
+      throw new NotFoundError("Task not found or access denied.");
     }
 
     if (
@@ -143,9 +142,7 @@ class TaskService {
       });
 
       if (existing) {
-        throw new Error(
-          "A task with this title already exists in this project."
-        );
+        throw new ConflictError("A task with this title already exists in this project.");
       }
     }
 
@@ -171,7 +168,7 @@ class TaskService {
     const task = await this.getTaskByIdAndUser(taskId, userId);
 
     if (!task) {
-      throw new Error("Task not found or access denied.");
+      throw new NotFoundError("Task not found or access denied.");
     }
 
     await task.destroy();

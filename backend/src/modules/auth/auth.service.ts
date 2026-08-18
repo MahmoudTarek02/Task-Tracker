@@ -3,6 +3,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { User } from "../../database/models";
 import { sendVerificationEmail } from "../../config/email";
+import { ConflictError, BadRequestError, UnauthorizedError } from "../../utils/errors";
 
 class AuthService {
   async register(name: string, email: string, password: string) {
@@ -12,7 +13,7 @@ class AuthService {
     });
 
     if (existingUser) {
-      throw new Error("Email already exists");
+      throw new ConflictError("Email already exists");
     }
 
     const verificationToken = crypto.randomUUID();
@@ -26,7 +27,6 @@ class AuthService {
       emailVerificationToken: verificationToken,
     });
 
-    // Send email verification link
     await sendVerificationEmail(email, verificationToken);
 
     return {
@@ -42,7 +42,7 @@ class AuthService {
     });
 
     if (!user) {
-      throw new Error("Invalid or expired verification token");
+      throw new BadRequestError("Invalid or expired verification token");
     }
 
     await user.update({
@@ -65,19 +65,13 @@ class AuthService {
     });
 
     if (!user) {
-      throw new Error("Invalid email or password");
+      throw new UnauthorizedError("Invalid email or password");
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.getDataValue("password"));
     if (!isPasswordValid) {
-      throw new Error("Invalid email or password");
+      throw new UnauthorizedError("Invalid email or password");
     }
-
-    // removed email verification requirement before login
-    
-    // if (!user.getDataValue("isEmailVerified")) {
-    //   throw new Error("Please verify your email address before logging in");
-    // }
 
     const secret = process.env.JWT_SECRET || "fallback_secret";
     const token = jwt.sign(
