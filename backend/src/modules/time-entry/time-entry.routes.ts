@@ -5,7 +5,7 @@ import { validate } from "../../middlewares/validate.middleware";
 import { updateTimeEntrySchema } from "./time-entry.validation";
 
 const router = Router();
-
+// Apply authentication middleware globally to all time entry routes
 router.use(authenticateToken);
 
 router.put("/:id", validate(updateTimeEntrySchema), timeEntryController.update);

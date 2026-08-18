@@ -1,4 +1,4 @@
-import { TimeEntry, Task, Project } from "../../database/models";
+import { TimeEntry, Task, Project, TaskAuditLog } from "../../database/models";
 import { NotFoundError } from "../../utils/errors";
 
 class TimeEntryService {
@@ -49,6 +49,17 @@ class TimeEntryService {
       note: data.note || null,
     });
 
+    await TaskAuditLog.create({
+      taskId,
+      userId,
+      action: "time_entry_create",
+      newValue: JSON.stringify({
+        duration: timeEntry.getDataValue("duration"),
+        date: timeEntry.getDataValue("date"),
+        note: timeEntry.getDataValue("note"),
+      }),
+    });
+
     return timeEntry;
   }
 
@@ -93,10 +104,30 @@ class TimeEntryService {
   async updateTimeEntry(userId: string, entryId: string, data: any) {
     const entry = await this.verifyEntryAccess(entryId, userId);
 
+    const oldDuration = entry.getDataValue("duration");
+    const oldDate = entry.getDataValue("date");
+    const oldNote = entry.getDataValue("note");
+
     await entry.update({
       duration: data.duration !== undefined ? data.duration : entry.getDataValue("duration"),
       date: data.date !== undefined ? data.date : entry.getDataValue("date"),
       note: data.note !== undefined ? data.note : entry.getDataValue("note"),
+    });
+
+    await TaskAuditLog.create({
+      taskId: entry.getDataValue("taskId"),
+      userId,
+      action: "time_entry_update",
+      oldValue: JSON.stringify({
+        duration: oldDuration,
+        date: oldDate,
+        note: oldNote,
+      }),
+      newValue: JSON.stringify({
+        duration: entry.getDataValue("duration"),
+        date: entry.getDataValue("date"),
+        note: entry.getDataValue("note"),
+      }),
     });
 
     return entry;
@@ -104,7 +135,24 @@ class TimeEntryService {
 
   async deleteTimeEntry(userId: string, entryId: string) {
     const entry = await this.verifyEntryAccess(entryId, userId);
+    const taskId = entry.getDataValue("taskId");
+    const duration = entry.getDataValue("duration");
+    const date = entry.getDataValue("date");
+    const note = entry.getDataValue("note");
+
     await entry.destroy();
+
+    await TaskAuditLog.create({
+      taskId,
+      userId,
+      action: "time_entry_delete",
+      oldValue: JSON.stringify({
+        duration,
+        date,
+        note,
+      }),
+    });
+
     return { message: "Time entry deleted successfully" };
   }
 }
