@@ -12,9 +12,12 @@ const scrubSecrets = winston.format((info) => {
   const mask = (obj: any): any => {
     if (!obj || typeof obj !== "object") return obj;
     for (const key in obj) {
-      if (secrets.includes(key.toLowerCase())) {
+      const lowerKey = key.toLowerCase();
+      if (secrets.some((secret) => lowerKey.includes(secret))) {
         obj[key] = "[REDACTED]";
-      } else if (typeof obj[key] === "object") {
+      }
+      // Recursive handling for nested objects
+      else if (typeof obj[key] === "object") {
         obj[key] = mask(obj[key]);
       }
     }
@@ -43,16 +46,21 @@ const format = winston.format.combine(
   isProduction
     ? winston.format.json()
     : winston.format.combine(
-        winston.format.colorize({ all: true }),
-        winston.format.printf(
-          (info) => `${info.timestamp} ${info.level}: ${info.message}`
-        )
-      )
+      winston.format.colorize({ all: true }),
+      // winston.format.printf(
+      //   (info) => `${info.timestamp} ${info.level}: ${info.message}`
+      // )  
+      // will let the logger print metadata along with message and timestamp in development
+      winston.format.printf(({ timestamp, level, message, ...meta }) => {
+        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+        return `${timestamp} ${level}: ${message}${metaStr}`;
+      })
+    )
 );
 
 // transports: where the logger outputs the logs (e.g., console, file, database)
 // will log to console only for now, can be expanded to log to files or database
-const transports = [new winston.transports.Console()];
+const transports = [new winston.transports.Console()]; // in logger.test.ts, we will do logger.add() to add a new transport to this array
 
 // logger instance
 export const logger = winston.createLogger({

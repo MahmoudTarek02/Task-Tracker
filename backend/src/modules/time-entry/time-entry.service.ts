@@ -2,6 +2,7 @@ import { TimeEntry, Task, Project, TaskAuditLog } from "../../database/models";
 import { NotFoundError } from "../../utils/errors";
 
 class TimeEntryService {
+  // checks if user has access to the task
   private async verifyTaskAccess(taskId: string, userId: string): Promise<Task> {
     const task = await Task.findByPk(taskId);
     if (!task) {
@@ -63,9 +64,15 @@ class TimeEntryService {
     return timeEntry;
   }
 
+  // returns time entries for a specific task
   async getTimeEntriesForTask(userId: string, taskId: string) {
+    // checks if user has access to the task
+    // if below function throw error, it will be caught by global error handler
+    // function execution stops there and error message is sent to the client
     const task = await this.verifyTaskAccess(taskId, userId);
 
+    // fetching all time entries for the task
+    // order by date descending and then by creation time descending
     const timeEntries = await TimeEntry.findAll({
       where: { taskId },
       order: [
@@ -74,16 +81,22 @@ class TimeEntryService {
       ],
     });
 
+    // fetching total logged time
+    // using reduce to sum up all the time entries
+    // and also to remove the responsibility for the frontend to do this calculation
     const totalLoggedTime = timeEntries.reduce(
       (sum, entry) => sum + Number(entry.getDataValue("duration")),
       0
     );
 
+    // get estimated time from task
     const estimatedTime = task.getDataValue("estimatedTime");
     let remainingTime = null;
     let overrunTime = null;
 
+    // if estimated time is not null or undefined
     if (estimatedTime !== undefined && estimatedTime !== null) {
+      // if total logged time is greater than estimated time
       if (totalLoggedTime > estimatedTime) {
         overrunTime = totalLoggedTime - estimatedTime;
         remainingTime = 0;
@@ -93,6 +106,9 @@ class TimeEntryService {
       }
     }
 
+    // returns time entries for a specific task along with total logged time, remaining time and overrun time
+    // this returns will be displayed directly on the frontend
+    // so no need to do any calculation on the frontend
     return {
       timeEntries,
       totalLoggedTime,

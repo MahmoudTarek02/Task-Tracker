@@ -20,3 +20,4 @@ router.post("/:taskId/time-entries", validate(createTimeEntrySchema), timeEntryC
 router.get("/:taskId/time-entries", timeEntryController.list);
 
 export default router;
+
