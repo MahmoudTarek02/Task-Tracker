@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { UnauthorizedError, ForbiddenError } from "../utils/errors";
+import { config } from "../config/env";
 
 export interface AuthRequest extends Request {
   user?: any;
