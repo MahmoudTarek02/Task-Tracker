@@ -1,5 +1,6 @@
 import { Task, Project } from "../../database/models";
-import { UniqueConstraintError } from "sequelize";
+import { UniqueConstraintError, Op } from "sequelize";
+import { sequelize } from "../../config/database";
 
 class TaskService {
   async createTask(userId: string, taskData: any) {
@@ -41,7 +42,16 @@ class TaskService {
     }
   }
 
-  async getTasksByProject(userId: string, projectId: string) {
+  async getTasksByProject(
+    userId: string,
+    projectId: string,
+    filters: {
+      search?: string;
+      status?: string;
+      priority?: string;
+      overdue?: boolean;
+    } = {}
+  ) {
     const project = await Project.findOne({
       where: { id: projectId, userId },
     });
@@ -50,8 +60,46 @@ class TaskService {
       throw new Error("Project not found or access denied.");
     }
 
+    const whereClause: any = { projectId };
+
+    if (filters.search) {
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${filters.search}%` } },
+        { description: { [Op.iLike]: `%${filters.search}%` } },
+      ];
+    }
+
+    if (filters.status) {
+      whereClause.status = filters.status;
+    }
+
+    if (filters.priority) {
+      whereClause.priority = filters.priority;
+    }
+
+    if (filters.overdue) {
+      whereClause.dueDate = {
+        [Op.lt]: new Date(),
+      };
+      whereClause.status = {
+        [Op.ne]: "Done",
+      };
+    }
+
     const tasks = await Task.findAll({
-      where: { projectId },
+      where: whereClause,
+      attributes: {
+        include: [
+          [
+            sequelize.literal(`(
+              SELECT COALESCE(SUM(duration), 0)
+              FROM time_entries AS te
+              WHERE te."taskId" = "Task".id
+            )`),
+            "totalLoggedTime"
+          ]
+        ]
+      },
       order: [["createdAt", "ASC"]],
     });
 

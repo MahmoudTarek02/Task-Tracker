@@ -1,15 +1,20 @@
 import { Request, Response } from "express";
-import taskService from "./task.service";
-import { createTaskSchema, updateTaskSchema } from "./task.validation";
+import timeEntryService from "./time-entry.service";
+import { createTimeEntrySchema, updateTimeEntrySchema } from "./time-entry.validation";
 
-class TaskController {
+class TimeEntryController {
   async create(req: Request, res: Response) {
     const authReq = req as any;
     if (!authReq.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    const result = createTaskSchema.safeParse(req.body);
+    const taskId = req.params.taskId as string;
+    if (!taskId) {
+      return res.status(400).json({ message: "Task ID is required" });
+    }
+
+    const result = createTimeEntrySchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({
         message: "Validation failed",
@@ -21,14 +26,19 @@ class TaskController {
     }
 
     try {
-      const task = await taskService.createTask(authReq.user.id, result.data);
+      const timeEntry = await timeEntryService.createTimeEntry(
+        authReq.user.id,
+        taskId,
+        result.data
+      );
+
       return res.status(201).json({
-        message: "Task created successfully",
-        task,
+        message: "Time entry created successfully",
+        timeEntry,
       });
     } catch (error: any) {
       return res.status(400).json({
-        message: error.message || "Failed to create task",
+        message: error.message || "Failed to create time entry",
       });
     }
   }
@@ -39,35 +49,21 @@ class TaskController {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    const { projectId, search, status, priority, overdue } = req.query;
-    if (!projectId || typeof projectId !== "string") {
-      return res.status(400).json({
-        message: "projectId query parameter is required and must be a string",
-      });
+    const taskId = req.params.taskId as string;
+    if (!taskId) {
+      return res.status(400).json({ message: "Task ID is required" });
     }
 
     try {
-      const filters: any = {};
-      if (typeof search === "string" && search.trim() !== "") {
-        filters.search = search.trim();
-      }
-      if (typeof status === "string" && status.trim() !== "") {
-        filters.status = status.trim();
-      }
-      if (typeof priority === "string" && priority.trim() !== "") {
-        filters.priority = priority.trim();
-      }
-      if (overdue === "true") {
-        filters.overdue = true;
-      }
+      const stats = await timeEntryService.getTimeEntriesForTask(
+        authReq.user.id,
+        taskId
+      );
 
-      const tasks = await taskService.getTasksByProject(authReq.user.id, projectId, filters);
-      return res.status(200).json({
-        tasks,
-      });
+      return res.status(200).json(stats);
     } catch (error: any) {
       return res.status(400).json({
-        message: error.message || "Failed to fetch tasks",
+        message: error.message || "Failed to fetch time entries",
       });
     }
   }
@@ -79,7 +75,11 @@ class TaskController {
     }
 
     const id = req.params.id as string;
-    const result = updateTaskSchema.safeParse(req.body);
+    if (!id) {
+      return res.status(400).json({ message: "Time entry ID is required" });
+    }
+
+    const result = updateTimeEntrySchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({
         message: "Validation failed",
@@ -91,14 +91,19 @@ class TaskController {
     }
 
     try {
-      const task = await taskService.updateTask(authReq.user.id, id, result.data);
+      const timeEntry = await timeEntryService.updateTimeEntry(
+        authReq.user.id,
+        id,
+        result.data
+      );
+
       return res.status(200).json({
-        message: "Task updated successfully",
-        task,
+        message: "Time entry updated successfully",
+        timeEntry,
       });
     } catch (error: any) {
       return res.status(400).json({
-        message: error.message || "Failed to update task",
+        message: error.message || "Failed to update time entry",
       });
     }
   }
@@ -110,15 +115,23 @@ class TaskController {
     }
 
     const id = req.params.id as string;
+    if (!id) {
+      return res.status(400).json({ message: "Time entry ID is required" });
+    }
+
     try {
-      const result = await taskService.deleteTask(authReq.user.id, id);
+      const result = await timeEntryService.deleteTimeEntry(
+        authReq.user.id,
+        id
+      );
+
       return res.status(200).json(result);
     } catch (error: any) {
       return res.status(400).json({
-        message: error.message || "Failed to delete task",
+        message: error.message || "Failed to delete time entry",
       });
     }
   }
 }
 
-export default new TaskController();
+export default new TimeEntryController();

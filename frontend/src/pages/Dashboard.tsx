@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import TaskBoard from "../components/TaskBoard";
@@ -11,8 +12,9 @@ interface Project {
 }
 
 export default function Dashboard() {
+  const { projectId } = useParams();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Edit modal states
@@ -39,9 +41,10 @@ export default function Dashboard() {
 
   const handleProjectCreated = (newProj: Project) => {
     setProjects((prev) => [newProj, ...prev]);
-    setSelectedProjectId(newProj.id);
+    navigate(`/home/projects/${newProj.id}`);
   };
 
+  const selectedProjectId = projectId || null;
   const activeProject = projects.find((p) => p.id === selectedProjectId) || null;
 
   const handleDeleteProject = async () => {
@@ -57,9 +60,9 @@ export default function Dashboard() {
       setProjects(updated);
       // Select another project if available, otherwise select null
       if (updated.length > 0) {
-        setSelectedProjectId(updated[0].id);
+        navigate(`/home/projects/${updated[0].id}`);
       } else {
-        setSelectedProjectId(null);
+        navigate("/home");
       }
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to delete project.");
@@ -102,7 +105,7 @@ export default function Dashboard() {
           projects={projects}
           loading={loading}
           selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
+          onSelectProject={(id) => navigate(`/home/projects/${id}`)}
           onProjectCreated={handleProjectCreated}
         />
         <main style={{ flex: 1, padding: "24px", overflowY: "auto", backgroundColor: "#fff" }}>
@@ -116,6 +119,22 @@ export default function Dashboard() {
                   )}
                 </div>
                 <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    onClick={() => navigate("/home")}
+                    style={{
+                      padding: "8px 14px",
+                      backgroundColor: "#fff",
+                      color: "#5e6c84",
+                      border: "1px solid #a5adba",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
+                      fontWeight: "bold",
+                      transition: "background 0.2s"
+                    }}
+                  >
+                    Close Project
+                  </button>
                   <button
                     onClick={handleOpenEditModal}
                     style={{
@@ -151,7 +170,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div style={{ flex: 1, minHeight: 0 }}>
-                <TaskBoard projectId={activeProject.id} />
+                <TaskBoard projectId={activeProject.id} onTasksChange={fetchProjects} />
               </div>
             </div>
           ) : (
@@ -228,8 +247,8 @@ export default function Dashboard() {
               </div>
               {editError && <span style={{ color: "#dc3545", fontSize: "0.85rem" }}>{editError}</span>}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => { setShowEditModal(false); setEditError(null); }}
                   style={{
                     padding: "8px 16px",
@@ -243,8 +262,8 @@ export default function Dashboard() {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   style={{
                     padding: "8px 16px",
                     backgroundColor: "#0052cc",

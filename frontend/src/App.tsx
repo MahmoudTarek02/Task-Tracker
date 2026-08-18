@@ -62,11 +62,13 @@ function App() {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/home" element={<Dashboard />} />
+            <Route path="/home/projects/:projectId" element={<Dashboard />} />
+            <Route path="/home/projects/:projectId/tasks/:taskId" element={<Dashboard />} />
           </Route>
 
           {/* Fallback redirect */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthContext.Provider>

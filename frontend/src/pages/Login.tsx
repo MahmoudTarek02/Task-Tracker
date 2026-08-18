@@ -19,7 +19,7 @@ export default function Login() {
     try {
       await api.post("/auth/login", { email, password });
       await checkSession();
-      navigate("/dashboard");
+      navigate("/home");
     } catch (err: any) {
       const errMsg =
         err.response?.data?.message ||

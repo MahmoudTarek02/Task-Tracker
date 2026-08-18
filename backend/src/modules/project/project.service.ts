@@ -1,5 +1,5 @@
 import { Project } from "../../database/models";
-import { UniqueConstraintError } from "sequelize"; // Added to handle database-level unique constraint violations
+import { UniqueConstraintError, Sequelize } from "sequelize"; 
 
 class ProjectService {
   async createProject(
@@ -39,6 +39,30 @@ class ProjectService {
   async getProjectsByUser(userId: string) {
     const projects = await Project.findAll({
       where: { userId },
+      attributes: {
+        include: [
+          [
+            // Design Approaches Comparison:
+            // -----------------------------
+            // Approach A: Dynamic/Calculated Query (Selected)
+            // - Calculates project overdue status dynamically on every fetch via database subquery.
+            // - Always real-time accurate; no sync bugs, no static column overhead, no DB migrations.
+            //
+            // Approach B: Stored Boolean Flag in Database
+            // - Stores overdue status as a static column in the 'projects' table.
+            // - Requires data migrations and complex triggers/hooks to prevent time-drift desynchronization.
+            Sequelize.literal(`
+              EXISTS (
+                SELECT 1 FROM "tasks" AS t
+                WHERE t."projectId" = "Project".id
+                  AND t."dueDate" < NOW()
+                  AND t.status != 'Done'
+              )
+            `),
+            "hasOverdueTasks",
+          ],
+        ],
+      },
       order: [["createdAt", "DESC"]],
     });
 
