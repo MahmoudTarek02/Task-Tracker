@@ -34,8 +34,17 @@ The project is split into a backend API and a frontend client:
 
 ## Setup & Environment Variables
 
-Create a `.env` file inside the `backend` folder containing:
+### Docker Setup
+Copy the example environment file at the root of the project to a new `.env` file:
+```bash
+cp .env.example .env
+```
+Populate `.env` with your desired configuration (e.g., credentials, secrets, email settings).
 
+**Note on User Registration:** To test the user registration flow, you need to update `EMAIL_USER` and `EMAIL_PASS` in your `.env` file with valid SMTP credentials. If left as placeholders, user registration will fail with a 500 error when attempting to send the verification email.
+
+### Native Local Setup
+Alternatively, if running without Docker, create a `.env` file inside the `backend` folder containing:
 ```ini
 PORT=3000
 DATABASE_URL=postgres://username:password@localhost:5432/tasktrack_db
@@ -46,9 +55,9 @@ LOG_LEVEL=info
 
 ---
 
-## Database Migrations
+## Database Migrations (Native Setup)
 
-Before starting the application, set up your PostgreSQL database schema by running the migrations from the `backend` folder:
+Before starting the application natively, set up your PostgreSQL database schema by running the migrations from the `backend` folder:
 
 ```bash
 # Inside the /backend directory
@@ -57,9 +66,50 @@ npx sequelize-cli db:migrate
 
 ---
 
-## Local Usage
+## Docker Usage
 
-To run the application locally on your machine, follow these steps:
+To run the entire stack (React frontend, Express backend, PostgreSQL database) in Docker containers:
+
+### 1. Build and Start Services
+```bash
+docker compose up -d --build
+```
+This builds the backend and frontend images, starts the database, and boots all services. 
+*Note: The frontend dev server binds to `0.0.0.0` to be accessible from the host.*
+
+### 2. Database Migrations
+Migrations are applied **automatically** during container startup. If you ever need to apply migrations manually or run new ones:
+```bash
+docker compose exec backend npx sequelize-cli db:migrate
+```
+
+### 3. Accessing the Application
+- **Frontend client**: [http://localhost:5178](http://localhost:5178)
+- **Backend API**: [http://localhost:3008](http://localhost:3008)
+- **API Documentation (Swagger)**: [http://localhost:3008/api-docs](http://localhost:3008/api-docs)
+- **Database Shell (psql)**: Access the PostgreSQL shell directly inside the container:
+  ```bash
+  docker exec -it task-tracker-db psql -U postgres -d task_tracker
+  ```
+
+### 4. Viewing Logs
+To stream backend operational logs in real-time:
+```bash
+docker compose logs -f backend
+```
+
+### 5. Stopping the Application
+To stop all running services:
+```bash
+docker compose down
+```
+*Note: To destroy the persistent PostgreSQL volume and reset the database state completely, run `docker compose down -v`.*
+
+---
+
+## Native Local Usage (Alternative)
+
+To run the application locally on your machine without Docker:
 
 ### 1. Start the Backend API
 ```bash

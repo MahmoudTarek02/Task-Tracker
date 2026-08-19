@@ -1,0 +1,74 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: task-tracker-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_password}
+      POSTGRES_DB: ${DB_NAME:-task_tracker}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - task-tracker-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: task-tracker-backend
+    restart: always
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres_password}
+      DB_NAME: ${DB_NAME:-task_tracker}
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres_password}@db:5432/${DB_NAME:-task_tracker}
+      JWT_SECRET: ${JWT_SECRET:-super_secrect_jwt_keysuper_secrect_jwt_keysuper_secrect_jwt_key}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_SECURE: ${EMAIL_SECURE:-false}
+      EMAIL_USER: ${EMAIL_USER:-your_email@gmail.com}
+      EMAIL_PASS: ${EMAIL_PASS:-your_email_password}
+      EMAIL_FROM: ${EMAIL_FROM:-TaskTrack <your_email@gmail.com>}
+    ports:
+      - "3008:3000"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - task-tracker-network    
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: task-tracker-frontend
+    restart: always
+    environment:
+      - BACKEND_URL=http://backend:3000
+    ports:
+      - "5178:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - task-tracker-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  task-tracker-network:
+    driver: bridge
