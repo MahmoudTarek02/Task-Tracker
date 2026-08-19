@@ -41,8 +41,7 @@ cp .env.example .env
 ```
 Populate `.env` with your desired configuration (e.g., credentials, secrets, email settings).
 
-> [!IMPORTANT]
-> **Email Credentials for Registration**: To test the User Registration flow, you **must** update the `EMAIL_USER` and `EMAIL_PASS` settings in your `.env` file with valid SMTP/Gmail credentials. If you leave the placeholder values, user registration will fail with a `500` error because the server cannot send the verification email.
+**Note on User Registration:** To test the user registration flow, you need to update `EMAIL_USER` and `EMAIL_PASS` in your `.env` file with valid SMTP credentials. If left as placeholders, user registration will fail with a 500 error when attempting to send the verification email.
 
 ### Native Local Setup
 Alternatively, if running without Docker, create a `.env` file inside the `backend` folder containing:
